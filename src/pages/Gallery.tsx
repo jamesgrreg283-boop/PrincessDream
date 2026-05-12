@@ -5,34 +5,92 @@ import SEO from "../components/SEO";
 import PageHeader from "../components/PageHeader";
 import Sparkles from "../components/Sparkles";
 
-/**
- * Gallery uses royalty-free placeholder images. Replace `GALLERY` items with
- * real photos & video thumbnails. Each item supports an optional video URL.
- */
+/** Real party and character photos only — files live in `public/gallery/`. Optional `video` per item is supported if needed later. */
 const GALLERY: {
   src: string;
   alt: string;
   tall?: boolean;
   video?: string;
 }[] = [
-  { src: "/characters/anna-elsa.png", alt: "Anna and Elsa together", tall: true },
-  { src: "/characters/belle.png", alt: "Princess Belle reading a storybook" },
-  { src: "/characters/elsa.png", alt: "Elsa the Snow Queen", tall: true },
-  { src: "/characters/fairy-sparkles.png", alt: "Fairy Sparkles meeting children at a garden party" },
-  { src: "/characters/ariel.png", alt: "Princess Ariel in her enchanted forest", tall: true },
-  { src: "/characters/rapunzel.png", alt: "Princess Rapunzel with her long golden braid" },
-  { src: "/characters/anna.png", alt: "Princess Anna in her travelling cloak", tall: true },
   {
-    src: "https://images.unsplash.com/photo-1530973428-5bf2db2e4d71?w=900&q=80&auto=format&fit=crop",
-    alt: "Sparkly princess wand and tiara",
+    src: "/gallery/01.png",
+    alt: "Ice princess performer crouching to sing with a young guest in a matching blue dress at an outdoor party",
+    tall: true,
   },
   {
-    src: "https://images.unsplash.com/photo-1542037104857-ffbb0b9155fb?w=900&q=80&auto=format&fit=crop",
-    alt: "Birthday cake with candles",
+    src: "/gallery/02.png",
+    alt: "Travelling princess performer in teal dress and purple cloak smiling in front of an enchanted forest backdrop",
+    tall: true,
   },
   {
-    src: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=900&q=80&auto=format&fit=crop",
-    alt: "Magical fairy lights and stars",
+    src: "/gallery/03.png",
+    alt: "Ice princess and birthday child posing by a Happy Birthday backdrop with pink and red balloons",
+    tall: true,
+  },
+  {
+    src: "/gallery/04.png",
+    alt: "Ice princess kneeling with a smiling birthday child on a patterned rug with party balloons",
+    tall: true,
+  },
+  {
+    src: "/gallery/05.png",
+    alt: "Ice princess entertaining toddlers and families at a Wild & Three themed birthday celebration",
+    tall: true,
+  },
+  {
+    src: "/gallery/06.png",
+    alt: "Ice princess hugging a delighted birthday child in a sparkly tutu and tiara at a party hall",
+    tall: true,
+  },
+  {
+    src: "/gallery/07.png",
+    alt: "Ice princess with a group of young guests in princess dresses at a celebration",
+    tall: true,
+  },
+  {
+    src: "/gallery/08.png",
+    alt: "Mermaid performer sitting in a circle with children for songs and games at an indoor party",
+    tall: true,
+  },
+  {
+    src: "/gallery/09.png",
+    alt: "Mermaid performer sharing the microphone with a child singing at a birthday party",
+    tall: true,
+  },
+  {
+    src: "/gallery/10.png",
+    alt: "Fairy performer leading a garden circle activity with children on a sunny lawn",
+    tall: true,
+  },
+  {
+    src: "/gallery/11.png",
+    alt: "Fairy performer with children seated on the grass at an outdoor fairytale party",
+    tall: true,
+  },
+  {
+    src: "/gallery/12.png",
+    alt: "Ice princess in a magical forest pose with sparkles and lanterns",
+    tall: true,
+  },
+  {
+    src: "/gallery/13.png",
+    alt: "Travelling princess and ice princess performers back-to-back in an enchanted forest scene",
+    tall: true,
+  },
+  {
+    src: "/gallery/14.png",
+    alt: "Mermaid performer in a sequined tail standing in a whimsical enchanted forest setting",
+    tall: true,
+  },
+  {
+    src: "/gallery/15.png",
+    alt: "Long-haired princess performer with floral braid in a fairytale forest backdrop",
+    tall: true,
+  },
+  {
+    src: "/gallery/16.png",
+    alt: "Golden-gown princess performer reading a storybook in an enchanted garden scene",
+    tall: true,
   },
 ];
 

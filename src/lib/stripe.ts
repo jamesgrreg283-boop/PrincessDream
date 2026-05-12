@@ -9,17 +9,19 @@
 //    Stripe will handle the entire checkout, success and cancel flow.
 //
 // 2) CHECKOUT SESSION (programmatic):
-//    Deploy a tiny serverless endpoint (Vercel/Netlify/Cloudflare Worker)
-//    that creates a Checkout Session. Then set VITE_STRIPE_CHECKOUT_ENDPOINT
-//    in a .env file. The booking page will POST the booking + amount to it
-//    and redirect to the returned `url`.
+//    Deploy the included Vercel function `api/create-checkout-session.mjs` and
+//    set STRIPE_SECRET_KEY in the Vercel project (never in the browser).
+//    In `.env.local` set VITE_STRIPE_CHECKOUT_ENDPOINT to your deployed URL,
+//    e.g. https://your-site.vercel.app/api/create-checkout-session
+//    The client POSTs { currency, packageSlug, booking, returnOrigin }; the
+//    server chooses the deposit amount from packageSlug (do not trust client
+//    amounts).
 //
 // During development (no Stripe configured), the booking form simulates a
 // successful submission and routes to /booking-success.
 // ============================================================================
 
 import type { Package } from "../data/packages";
-import { depositFor } from "../data/packages";
 
 /** Per-package Stripe Payment Link URLs. Replace `null` with real URLs. */
 export const STRIPE_PAYMENT_LINKS: Record<string, string | null> = {
@@ -58,8 +60,6 @@ export async function redirectToDeposit(
   pkg: Package,
   booking: BookingPayload
 ): Promise<void> {
-  const deposit = depositFor(pkg);
-
   // 1. Payment Link
   const link = STRIPE_PAYMENT_LINKS[pkg.slug];
   if (link) {
@@ -72,14 +72,15 @@ export async function redirectToDeposit(
   // 2. Checkout Session endpoint
   if (CHECKOUT_ENDPOINT) {
     try {
+      sessionStorage.setItem("apd_booking", JSON.stringify(booking));
       const res = await fetch(CHECKOUT_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: deposit * 100, // pence
           currency: "gbp",
           packageSlug: pkg.slug,
           booking,
+          returnOrigin: window.location.origin,
         }),
       });
       if (res.ok) {

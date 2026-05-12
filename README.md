@@ -17,6 +17,7 @@ npm install
 npm run dev     # local dev server
 npm run build   # production build to /dist
 npm run preview # preview the production build
+npm run stripe:sync-deposits  # Stripe deposit products (needs STRIPE_SECRET_KEY in .env.local)
 ```
 
 Open <http://localhost:5173>.
@@ -33,8 +34,13 @@ src/
 ├── components/           # Reusable UI (Navbar, Footer, cards, SEO, sparkles, ...)
 ├── data/                 # Editable content: characters, packages, reviews, areas, faqs, site
 ├── lib/
-│   └── stripe.ts         # Stripe deposit redirect logic (Payment Link or API)
+│   └── stripe.ts         # Stripe deposit redirect (Payment Link or Checkout API)
 └── pages/                # One file per route
+api/
+└── create-checkout-session.mjs  # Vercel: Stripe Checkout Session
+scripts/
+├── sync-stripe-deposit-products.mjs  # Idempotent Stripe Product/Price setup
+└── hero-png-to-webp.mjs
 public/
 ├── crown.svg             # Favicon (also reused inline)
 ├── robots.txt
@@ -92,23 +98,36 @@ export const STRIPE_PAYMENT_LINKS = {
 
 Customers will be redirected to Stripe's hosted checkout.
 
-### Option 2 — Checkout Session API
+### Option 2 — Checkout Session (this repo + Vercel)
 
-1. Create a tiny serverless endpoint (Vercel/Netlify/Cloudflare) that creates
-   a Stripe Checkout Session and returns `{ url }`.
-2. Copy `.env.example` to `.env` and set:
+The project includes `api/create-checkout-session.mjs`, which creates a Stripe
+Checkout Session using your **secret** key on the server only.
 
+1. Deploy the site to [Vercel](https://vercel.com/) (import the Git repo).
+2. In the Vercel project → **Settings → Environment Variables**, add:
+   - `STRIPE_SECRET_KEY` — your `sk_test_…` or `sk_live_…` (never prefix with `VITE_` and never commit it).
+   - `STRIPE_PRICE_30_MINUTE_APPEARANCE`, `STRIPE_PRICE_1_HOUR_PARTY`, `STRIPE_PRICE_2_HOUR_PARTY` — Stripe **Price** IDs (`price_…`) from `npm run stripe:sync-deposits` (see below). When these are set, Checkout uses your Stripe **Products** catalogue; if omitted, Checkout still works using inline `price_data` for the same GBP amounts.
+   - `STRIPE_ALLOWED_FRONTEND_ORIGINS` (optional) — comma-separated list of your real site origins, e.g. `https://princessdream.co.uk,https://www.princessdream.co.uk`.  
+     If unset, the function still allows `http://localhost:*`, `http://127.0.0.1:*`, and `*.vercel.app` previews.
+3. **Create deposit products in Stripe (one-time):** from the repo root, with `STRIPE_SECRET_KEY` in `.env.local`:
+
+```bash
+npm run stripe:sync-deposits
 ```
-VITE_STRIPE_CHECKOUT_ENDPOINT=https://your-api/.../create-checkout-session
-```
 
-The booking form will POST `{ amount, currency, packageSlug, booking }` to
-that endpoint and redirect to the returned `url`.
+Copy the printed `STRIPE_PRICE_*=price_…` lines into `.env.local` and into the same variables on Vercel, then redeploy.
+
+4. Copy `.env.example` to `.env.local` (gitignored) and set:
+   - `VITE_STRIPE_CHECKOUT_ENDPOINT` — full URL to the function, e.g. `https://your-project.vercel.app/api/create-checkout-session`
+   - `VITE_STRIPE_PUBLISHABLE_KEY` (optional) — your `pk_test_…` / `pk_live_…` if you later add Stripe.js; the redirect flow does not require it today.
+
+Local testing: run `npx vercel dev` from the repo root (serves the Vite app and `/api/*` together), then set `VITE_STRIPE_CHECKOUT_ENDPOINT` to `http://localhost:3000/api/create-checkout-session` (or whatever URL the CLI prints) and add `STRIPE_SECRET_KEY` to `.env.local` for the serverless runtime.
+
+The booking form POSTs `{ currency, packageSlug, booking, returnOrigin }`. The **deposit in pence** is chosen on the server from `packageSlug` (it does not trust a client-supplied amount).
 
 ### Dev mode
 
-If neither option is configured, the form simulates a successful submission
-and routes to `/booking-success?dev=1` so you can test the flow.
+If neither Payment Links nor `VITE_STRIPE_CHECKOUT_ENDPOINT` is configured, the form simulates a successful submission and routes to `/booking-success?dev=1` so you can test the flow.
 
 ---
 

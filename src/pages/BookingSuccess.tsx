@@ -7,7 +7,8 @@ import { SITE } from "../data/site";
 
 export default function BookingSuccess() {
   const [params] = useSearchParams();
-  const dev = params.get("dev") === "1";
+  const stripeSession = params.get("session_id");
+  const dev = params.get("dev") === "1" && !stripeSession;
 
   return (
     <>
@@ -41,10 +42,9 @@ export default function BookingSuccess() {
 
           {dev && (
             <div className="mt-6 mx-auto max-w-md p-4 rounded-2xl bg-pinkSoft/60 text-sm text-ink">
-              <strong>Dev mode:</strong> Stripe isn't configured yet, so no
-              real payment was taken. Add Payment Links in{" "}
-              <code className="bg-white px-1.5 py-0.5 rounded">src/lib/stripe.ts</code>{" "}
-              to enable real deposits.
+              <strong>Dev mode:</strong> no live checkout ran (missing Payment
+              Link or <code className="bg-white px-1.5 py-0.5 rounded">VITE_STRIPE_CHECKOUT_ENDPOINT</code>
+              ). See README for Stripe setup.
             </div>
           )}
 
