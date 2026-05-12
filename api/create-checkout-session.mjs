@@ -53,14 +53,25 @@ function isAllowedFrontendOrigin(origin) {
   if (!origin || typeof origin !== "string") return false;
   if (origin.startsWith("http://localhost:")) return true;
   if (origin.startsWith("http://127.0.0.1:")) return true;
+
   const extras = (process.env.STRIPE_ALLOWED_FRONTEND_ORIGINS || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+
   try {
-    const { hostname } = new URL(origin);
+    const u = new URL(origin);
+    const { hostname } = u;
     if (hostname.endsWith(".vercel.app")) return true;
-    return extras.includes(origin);
+
+    // Explicit allowlist → strict (recommended once domains are stable).
+    if (extras.length > 0) {
+      return extras.includes(origin);
+    }
+
+    // No allowlist: allow any real HTTPS site (www vs apex, custom domain on Vercel).
+    if (u.protocol === "https:" && hostname.length > 0) return true;
+    return false;
   } catch {
     return false;
   }
@@ -103,11 +114,6 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  const secret = process.env.STRIPE_SECRET_KEY;
-  if (!secret) {
-    return res.status(500).json({ error: "Stripe is not configured" });
-  }
-
   const body = parseBody(req);
   if (!body) {
     return res.status(400).json({ error: "Invalid JSON body" });
@@ -115,13 +121,20 @@ export default async function handler(req, res) {
 
   const { currency = "gbp", packageSlug, booking, returnOrigin } = body;
 
-  const base =
-    typeof returnOrigin === "string" && isAllowedFrontendOrigin(returnOrigin)
-      ? returnOrigin.replace(/\/$/, "")
-      : null;
+  const ro =
+    typeof returnOrigin === "string" ? returnOrigin.trim().replace(/\/$/, "") : "";
+  const o = requestOrigin.trim().replace(/\/$/, "");
+  if (!ro || ro !== o) {
+    return res.status(403).json({
+      error: "returnOrigin must match the site address (refresh and try again).",
+    });
+  }
 
-  if (!base) {
-    return res.status(400).json({ error: "Invalid or missing returnOrigin" });
+  const base = ro;
+
+  const secret = process.env.STRIPE_SECRET_KEY;
+  if (!secret) {
+    return res.status(500).json({ error: "Stripe is not configured" });
   }
 
   if (!booking || typeof booking !== "object") {
