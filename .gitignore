@@ -14,6 +14,8 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# Local overrides (DB URI, Supabase keys, Stripe, etc.) — never commit
+.env.local
 
 # Editor directories and files
 .vscode/*

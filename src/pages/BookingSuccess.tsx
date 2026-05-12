@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import SEO from "../components/SEO";
@@ -9,11 +10,57 @@ export default function BookingSuccess() {
   const [params] = useSearchParams();
   const stripeSession = params.get("session_id");
   const dev = params.get("dev") === "1" && !stripeSession;
+  const [recordStatus, setRecordStatus] = useState<"unknown" | "pending" | "confirmed">(
+    stripeSession ? "unknown" : "confirmed"
+  );
+  const [slowPoll, setSlowPoll] = useState(false);
+
+  useEffect(() => {
+    if (!stripeSession) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 30;
+
+    const poll = async () => {
+      if (cancelled || attempts >= maxAttempts) {
+        if (!cancelled && attempts >= maxAttempts) setSlowPoll(true);
+        return;
+      }
+      attempts += 1;
+      try {
+        const r = await fetch(
+          `${window.location.origin}/api/booking-status?session_id=${encodeURIComponent(stripeSession)}`
+        );
+        if (!r.ok) {
+          setTimeout(poll, 2000);
+          return;
+        }
+        const j = (await r.json()) as { status?: string };
+        if (cancelled) return;
+        if (j.status === "confirmed") {
+          setRecordStatus("confirmed");
+          return;
+        }
+        if (j.status === "pending") {
+          setRecordStatus("pending");
+        }
+      } catch {
+        /* transient network — keep polling */
+      }
+      setTimeout(poll, 2000);
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [stripeSession]);
 
   return (
     <>
       <SEO
-        title="Booking Confirmed | PrincessDream"
+        title="Booking Confirmed"
         description="Thank you for your booking. We'll be in touch shortly to confirm all the magical details."
         path="/booking-success"
       />
@@ -35,10 +82,28 @@ export default function BookingSuccess() {
           </h1>
           <div className="accent-hr mt-5" />
           <p className="mt-6 text-inkSoft text-base sm:text-lg leading-relaxed">
-            Thank you for choosing PrincessDream. We've received your booking
+            Thank you for choosing PrincessDream. We&apos;ve received your booking
             request and will be in touch within 24 hours to confirm all the
             magical details.
           </p>
+
+          {stripeSession && recordStatus === "pending" && (
+            <p className="mt-4 text-sm text-inkSoft max-w-md mx-auto">
+              We&apos;re confirming your payment — this usually takes a few seconds. A
+              confirmation email will arrive shortly; check spam if you don&apos;t see
+              it.
+            </p>
+          )}
+          {stripeSession && slowPoll && recordStatus !== "confirmed" && (
+            <p className="mt-4 text-sm text-amber-800 max-w-md mx-auto">
+              Confirmation is taking longer than usual. If you have a Stripe receipt,
+              your payment went through — we&apos;ll email you shortly or you can call{" "}
+              <a href={`tel:${SITE.phoneTel}`} className="text-pinkDeep underline">
+                {SITE.phone}
+              </a>
+              .
+            </p>
+          )}
 
           {dev && (
             <div className="mt-6 mx-auto max-w-md p-4 rounded-2xl bg-pinkSoft/60 text-sm text-ink text-left">
@@ -67,13 +132,13 @@ export default function BookingSuccess() {
                 <span className="w-6 h-6 grid place-items-center rounded-full bg-accent-btn text-white text-xs font-bold flex-shrink-0">
                   1
                 </span>
-                We'll email you a personal confirmation with all your details.
+                We&apos;ll email you a personal confirmation with all your details.
               </li>
               <li className="flex gap-3">
                 <span className="w-6 h-6 grid place-items-center rounded-full bg-accent-btn text-white text-xs font-bold flex-shrink-0">
                   2
                 </span>
-                We'll send a friendly reminder a few days before the big day.
+                We&apos;ll send a friendly reminder a few days before the big day.
               </li>
               <li className="flex gap-3">
                 <span className="w-6 h-6 grid place-items-center rounded-full bg-accent-btn text-white text-xs font-bold flex-shrink-0">

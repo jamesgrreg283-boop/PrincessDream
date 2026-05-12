@@ -1,4 +1,12 @@
 import Stripe from "stripe";
+import { applyCors, handleOptions, isAllowedFrontendOrigin } from "./_lib/cors.mjs";
+import { getSupabaseAdmin } from "./_lib/supabase.mjs";
+import { isSlotAvailable } from "./_lib/availability.mjs";
+import {
+  bookingRowFromPayload,
+  validateBookingPayload,
+} from "./_lib/bookingValidate.mjs";
+import { packageBySlug } from "./_lib/packages.mjs";
 
 const DEPOSITS_PENCE = {
   "30-minute-appearance": 4000,
@@ -6,7 +14,6 @@ const DEPOSITS_PENCE = {
   "2-hour-party": 5000,
 };
 
-/** From `npm run stripe:sync-deposits` — add to Vercel + `.env.local`. */
 function priceIdForPackage(slug) {
   const map = {
     "30-minute-appearance": process.env.STRIPE_PRICE_30_MINUTE_APPEARANCE,
@@ -49,34 +56,6 @@ async function buildLineItems(stripe, packageSlug, currency) {
   ];
 }
 
-function isAllowedFrontendOrigin(origin) {
-  if (!origin || typeof origin !== "string") return false;
-  if (origin.startsWith("http://localhost:")) return true;
-  if (origin.startsWith("http://127.0.0.1:")) return true;
-
-  const extras = (process.env.STRIPE_ALLOWED_FRONTEND_ORIGINS || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  try {
-    const u = new URL(origin);
-    const { hostname } = u;
-    if (hostname.endsWith(".vercel.app")) return true;
-
-    // Explicit allowlist → strict (recommended once domains are stable).
-    if (extras.length > 0) {
-      return extras.includes(origin);
-    }
-
-    // No allowlist: allow any real HTTPS site (www vs apex, custom domain on Vercel).
-    if (u.protocol === "https:" && hostname.length > 0) return true;
-    return false;
-  } catch {
-    return false;
-  }
-}
-
 function parseBody(req) {
   const b = req.body;
   if (b && typeof b === "object" && !Buffer.isBuffer(b)) return b;
@@ -92,15 +71,7 @@ function parseBody(req) {
 
 export default async function handler(req, res) {
   const requestOrigin = req.headers.origin || "";
-
-  if (req.method === "OPTIONS") {
-    if (isAllowedFrontendOrigin(requestOrigin)) {
-      res.setHeader("Access-Control-Allow-Origin", requestOrigin);
-      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    }
-    return res.status(204).end();
-  }
+  if (handleOptions(req, res)) return;
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -110,9 +81,7 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "Origin not allowed" });
   }
 
-  res.setHeader("Access-Control-Allow-Origin", requestOrigin);
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  applyCors(res, requestOrigin);
 
   const body = parseBody(req);
   if (!body) {
@@ -141,10 +110,59 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing booking" });
   }
 
-  const email = String(booking.email || "").trim();
-  if (!email) {
-    return res.status(400).json({ error: "Missing booking email" });
+  const v = validateBookingPayload(booking);
+  if (!v.ok) {
+    return res.status(400).json({ error: "Invalid booking fields", fields: v.errors });
   }
+
+  const pkg = packageBySlug(String(packageSlug));
+  if (!pkg || pkg.slug !== booking.packageSlug) {
+    return res.status(400).json({ error: "Invalid package" });
+  }
+
+  let supabase;
+  try {
+    supabase = getSupabaseAdmin();
+  } catch (e) {
+    if (e?.code === "NO_SUPABASE") {
+      return res.status(500).json({ error: "Database is not configured" });
+    }
+    throw e;
+  }
+
+  const available = await isSlotAvailable(
+    supabase,
+    booking.partyDate,
+    booking.partyTime
+  );
+  if (!available) {
+    return res.status(409).json({
+      error:
+        "That date and time is no longer available. Please choose another slot.",
+    });
+  }
+
+  const holdMin = Math.max(
+    5,
+    Math.min(120, Number(process.env.BOOKING_PENDING_HOLD_MINUTES || 30))
+  );
+  const holdExpires = new Date(Date.now() + holdMin * 60 * 1000).toISOString();
+
+  const row = bookingRowFromPayload(booking, pkg);
+  row.hold_expires_at = holdExpires;
+
+  const { data: inserted, error: insErr } = await supabase
+    .from("bookings")
+    .insert(row)
+    .select("id")
+    .single();
+
+  if (insErr || !inserted?.id) {
+    console.error(insErr);
+    return res.status(500).json({ error: "Could not create booking hold" });
+  }
+
+  const bookingId = inserted.id;
 
   const stripe = new Stripe(secret);
 
@@ -152,6 +170,7 @@ export default async function handler(req, res) {
   try {
     line_items = await buildLineItems(stripe, packageSlug, currency);
   } catch (e) {
+    await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
     if (e && e.code === "PRICE_MISMATCH") {
       return res.status(500).json({ error: e.message });
     }
@@ -162,26 +181,54 @@ export default async function handler(req, res) {
   }
 
   if (!line_items) {
+    await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
     return res.status(400).json({ error: "Invalid package" });
   }
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    customer_email: email,
-    line_items,
-    success_url: `${base}/booking-success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${base}/book?canceled=1`,
-    metadata: {
-      packageSlug: String(packageSlug),
-      parentName: String(booking.parentName || "").slice(0, 500),
-      childName: String(booking.childName || "").slice(0, 500),
-      partyDate: String(booking.partyDate || "").slice(0, 500),
-      character: String(booking.character || "").slice(0, 500),
-    },
-  });
+  const email = String(booking.email || "").trim();
+
+  let session;
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      customer_email: email,
+      line_items,
+      success_url: `${base}/booking-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${base}/book?canceled=1`,
+      client_reference_id: bookingId,
+      metadata: {
+        booking_id: bookingId,
+        packageSlug: String(packageSlug),
+        parentName: String(booking.parentName || "").slice(0, 500),
+        childName: String(booking.childName || "").slice(0, 500),
+        partyDate: String(booking.partyDate || "").slice(0, 500),
+        character: String(booking.character || "").slice(0, 500),
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
+    return res.status(500).json({
+      error:
+        e && typeof e.message === "string"
+          ? e.message
+          : "Could not start checkout session",
+    });
+  }
 
   if (!session.url) {
+    await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
     return res.status(500).json({ error: "No checkout URL returned" });
+  }
+
+  const { error: upErr } = await supabase
+    .from("bookings")
+    .update({ stripe_session_id: session.id })
+    .eq("id", bookingId);
+
+  if (upErr) {
+    console.error(upErr);
+    return res.status(500).json({ error: "Booking was created but checkout link failed to save. Contact support." });
   }
 
   return res.status(200).json({ url: session.url });

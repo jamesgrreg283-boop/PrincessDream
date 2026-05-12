@@ -12,6 +12,7 @@ import Areas from "./pages/Areas";
 import AreaDetail from "./pages/AreaDetail";
 import Book from "./pages/Book";
 import BookingSuccess from "./pages/BookingSuccess";
+import AdminBookings from "./pages/AdminBookings";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/book" element={<Book />} />
           <Route path="/contact" element={<Book />} />
           <Route path="/booking-success" element={<BookingSuccess />} />
+          <Route path="/admin/bookings" element={<AdminBookings />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="*" element={<NotFound />} />

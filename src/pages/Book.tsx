@@ -75,6 +75,7 @@ export default function Book() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [checkoutErrorBanner, setCheckoutErrorBanner] = useState<string | null>(null);
+  const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
 
   const pkgParam = searchParams.get("package");
   const charParam = searchParams.get("character");
@@ -83,12 +84,15 @@ export default function Book() {
     if (searchParams.get("checkout_error") !== "1") return;
     const msg = sessionStorage.getItem(CHECKOUT_ERROR_STORAGE_KEY);
     sessionStorage.removeItem(CHECKOUT_ERROR_STORAGE_KEY);
-    setCheckoutErrorBanner(
-      msg ?? "We couldn't start the card payment. Please try again or call us to complete your booking."
-    );
+    const id = requestAnimationFrame(() => {
+      setCheckoutErrorBanner(
+        msg ?? "We couldn't start the card payment. Please try again or call us to complete your booking."
+      );
+    });
     const next = new URLSearchParams(searchParams);
     next.delete("checkout_error");
     setSearchParams(next, { replace: true });
+    return () => cancelAnimationFrame(id);
   }, [searchParams, setSearchParams]);
 
   // Pre-select from query string (deferred setState avoids cascading-render lint)
@@ -108,6 +112,47 @@ export default function Book() {
     () => PACKAGES.find((p) => p.slug === form.packageSlug) ?? PACKAGES[1],
     [form.packageSlug]
   );
+
+  const partyTimeOptions = useMemo(
+    () =>
+      PARTY_TIME_LIST_OPTIONS.filter(
+        (o) => !o.value || !occupiedTimes.includes(o.value)
+      ),
+    [occupiedTimes]
+  );
+
+  useEffect(() => {
+    if (!form.partyDate) {
+      const id = requestAnimationFrame(() => setOccupiedTimes([]));
+      return () => cancelAnimationFrame(id);
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `${window.location.origin}/api/check-availability?date=${encodeURIComponent(form.partyDate)}`
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as { occupiedTimes?: string[] };
+        if (!cancelled && Array.isArray(data.occupiedTimes)) {
+          setOccupiedTimes(data.occupiedTimes);
+        }
+      } catch {
+        if (!cancelled) setOccupiedTimes([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [form.partyDate]);
+
+  useEffect(() => {
+    if (!form.partyTime || !occupiedTimes.includes(form.partyTime)) return;
+    const id = requestAnimationFrame(() => {
+      setForm((f) => ({ ...f, partyTime: "" }));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [occupiedTimes, form.partyTime]);
 
   const deposit = depositFor(selectedPackage);
   const balance = remainingFor(selectedPackage);
@@ -147,7 +192,34 @@ export default function Book() {
     }
     setSubmitting(true);
     try {
-      // TODO: optionally POST `form` to your CRM / email service (Formspree, Resend, etc.)
+      try {
+        const av = await fetch(
+          `${window.location.origin}/api/check-availability?date=${encodeURIComponent(form.partyDate)}&time=${encodeURIComponent(form.partyTime)}`
+        );
+        let avJson: { available?: boolean; error?: string } = {};
+        try {
+          avJson = (await av.json()) as { available?: boolean; error?: string };
+        } catch {
+          /* non-JSON */
+        }
+        if (!av.ok || avJson.available === false) {
+          setErrors((prev) => ({
+            ...prev,
+            partyTime:
+              avJson.error ??
+              "That date and time is no longer available. Please choose another slot.",
+          }));
+          requestAnimationFrame(() => {
+            const el = document.querySelector("[data-error='true']");
+            el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          });
+          setSubmitting(false);
+          return;
+        }
+      } catch {
+        /* If availability API is unreachable (e.g. local dev), continue — server enforces on checkout */
+      }
+
       const payload: BookingPayload = {
         parentName: form.parentName,
         email: form.email,
@@ -296,7 +368,7 @@ export default function Book() {
                   id="partyTime"
                   value={form.partyTime}
                   onChange={(v) => update("partyTime", v)}
-                  options={[...PARTY_TIME_LIST_OPTIONS]}
+                  options={[...partyTimeOptions]}
                   placeholder="Select start time"
                   invalid={!!errors.partyTime}
                 />

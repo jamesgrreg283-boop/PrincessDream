@@ -3,10 +3,12 @@ import { SITE } from "../data/site";
 
 type SEOProps = {
   title: string;
-  description: string;
+  description?: string;
   path?: string;
   image?: string;
   schema?: object | object[];
+  /** When true, adds robots noindex,nofollow (e.g. admin pages). */
+  noindex?: boolean;
 };
 
 /**
@@ -15,10 +17,11 @@ type SEOProps = {
  */
 export default function SEO({
   title,
-  description,
+  description = "Magical princess parties in Coventry and surrounding areas.",
   path = "/",
   image = "/hero-collage/01.png?v=collage-v1",
   schema,
+  noindex = false,
 }: SEOProps) {
   const fullTitle = title.includes(SITE.name) ? title : `${title} | ${SITE.name}`;
   const url = `${SITE.url}${path}`;
@@ -44,6 +47,8 @@ export default function SEO({
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
+
+      {noindex && <meta name="robots" content="noindex, nofollow" />}
 
       {schemaArr.map((s, i) => (
         <script key={i} type="application/ld+json">

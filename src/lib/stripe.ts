@@ -130,8 +130,15 @@ export async function redirectToDeposit(
         try {
           const errBody = (await res.json()) as { error?: string };
           if (errBody?.error) msg = errBody.error;
+          else if (res.status === 409) {
+            msg =
+              "That date and time is no longer available. Please choose another slot.";
+          }
         } catch {
-          /* ignore non-JSON body */
+          if (res.status === 409) {
+            msg =
+              "That date and time is no longer available. Please choose another slot.";
+          }
         }
         sessionStorage.setItem(CHECKOUT_ERROR_STORAGE_KEY, msg);
       }
