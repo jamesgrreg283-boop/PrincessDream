@@ -21,7 +21,8 @@ export const PACKAGES: Package[] = [
     name: "30 Minute Appearance",
     duration: "30 minutes",
     price: 100,
-    depositOnline: 40,
+    /** TODO: restore to 40 after live Stripe testing — £1 deposit for test checkouts only */
+    depositOnline: 1,
     tagline: "A magical short visit — perfect for younger children.",
     includes: [
       "Meet and Greet",

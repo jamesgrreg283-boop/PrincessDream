@@ -9,7 +9,8 @@ import {
 import { packageBySlug } from "./_lib/packages.mjs";
 
 const DEPOSITS_PENCE = {
-  "30-minute-appearance": 4000,
+  // TODO: restore 4000 after testing — must match packages deposit in pence
+  "30-minute-appearance": 100,
   "1-hour-party": 5000,
   "2-hour-party": 5000,
 };

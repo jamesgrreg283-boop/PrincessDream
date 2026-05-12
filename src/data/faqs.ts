@@ -11,7 +11,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "How much is the deposit?",
-    a: "A fixed online deposit secures your booking: £40 for the 30-minute appearance (£100 total), and £50 for the 1-hour (£180 total) or 2-hour (£230 total) parties.",
+    a: "A fixed online deposit secures your booking: £1 for the 30-minute appearance (£100 total; balance on the day), and £50 for the 1-hour (£180 total) or 2-hour (£230 total) parties. (30-minute deposit is temporarily £1 for checkout testing — will return to £40.)",
   },
   {
     q: "When is the remaining balance due?",

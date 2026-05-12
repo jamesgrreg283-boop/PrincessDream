@@ -4,7 +4,8 @@ export const PACKAGES = [
     slug: "30-minute-appearance",
     name: "30 Minute Appearance",
     price: 100,
-    depositOnline: 40,
+    // TODO: restore 40 after testing — must match src/data/packages.ts depositOnline
+    depositOnline: 1,
   },
   {
     slug: "1-hour-party",

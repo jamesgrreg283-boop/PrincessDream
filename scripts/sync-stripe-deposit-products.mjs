@@ -19,7 +19,8 @@ const DEPOSITS = [
     name: "PrincessDream — 30 Minute Appearance (deposit)",
     description:
       "Online deposit to secure a 30-minute princess appearance. Balance due before the party.",
-    unitAmountPence: 4000,
+    // TODO: restore 4000 after testing — must match create-checkout-session DEPOSITS_PENCE
+    unitAmountPence: 100,
   },
   {
     slug: "1-hour-party",
