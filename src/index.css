@@ -116,6 +116,69 @@ body {
            focus:outline-none focus:ring-2 focus:ring-pinkBlush focus:border-pinkBlush
            transition-all duration-200;
   }
+
+  /* Book form: date + selects — lavender/cream field + brand accent */
+  input[type="date"].input-magical-enhanced,
+  select.input-magical-enhanced,
+  input[type="number"].input-magical-enhanced {
+    @apply bg-gradient-to-br from-lavender/45 via-white to-pinkSoft/50 border-pinkBlush/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)];
+    accent-color: #d81b60;
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type="date"].input-magical-enhanced::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.88;
+  }
+
+  select.input-magical-enhanced {
+    appearance: none;
+    padding-right: 2.75rem;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23D81B60' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"),
+      linear-gradient(
+        145deg,
+        rgba(243, 229, 245, 0.55) 0%,
+        #ffffff 42%,
+        rgba(252, 228, 236, 0.65) 100%
+      );
+    background-repeat: no-repeat, no-repeat;
+    background-position: right 0.75rem center, 0 0;
+    background-size: 1.1rem 1.1rem, auto;
+  }
+
+  select.input-magical-enhanced option {
+    @apply bg-white text-ink py-2;
+  }
+
+  /* Custom Headless listbox panels (Book form) */
+  .apd-scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #f8bbd0 #fff5fb;
+  }
+  .apd-scroll-thin::-webkit-scrollbar {
+    width: 8px;
+  }
+  .apd-scroll-thin::-webkit-scrollbar-track {
+    background: #fff5fb;
+    border-radius: 9999px;
+  }
+  .apd-scroll-thin::-webkit-scrollbar-thumb {
+    background: #f8bbd0;
+    border-radius: 9999px;
+  }
+  .apd-scroll-thin::-webkit-scrollbar-thumb:hover {
+    background: #f472b6;
+  }
+}
+
+/* react-day-picker — brand tokens (root also uses .rdp-root from library) */
+.apd-rdp {
+  --rdp-accent-color: #d81b60;
+  --rdp-accent-background-color: #fce4ec;
+  --rdp-today-color: #d81b60;
+  --rdp-outside-opacity: 0.35;
+  font-family: "Poppins", "Inter", system-ui, sans-serif;
 }
 
 /* Backdrop sparkle pulse */

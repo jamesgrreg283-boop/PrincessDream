@@ -8,7 +8,48 @@ import { PACKAGES, depositFor, remainingFor } from "../data/packages";
 import { CHARACTERS } from "../data/characters";
 import { SITE, TRUST_BADGES } from "../data/site";
 import TrustBadges from "../components/TrustBadges";
+import MagicalDateField from "../components/MagicalDateField";
+import MagicalListbox from "../components/MagicalListbox";
 import { redirectToDeposit, type BookingPayload, CHECKOUT_ERROR_STORAGE_KEY } from "../lib/stripe";
+
+/** Party start times: every day, 9:00 am–4:00 pm inclusive, 15-minute steps. */
+const PARTY_START_TIME_OPTIONS: { value: string; label: string }[] = (() => {
+  const opts: { value: string; label: string }[] = [];
+  for (let m = 9 * 60; m <= 16 * 60; m += 15) {
+    const h24 = Math.floor(m / 60);
+    const min = m % 60;
+    const value = `${String(h24).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+    const period = h24 >= 12 ? "pm" : "am";
+    const h12 = ((h24 + 11) % 12) + 1;
+    opts.push({ value, label: `${h12}:${String(min).padStart(2, "0")} ${period}` });
+  }
+  return opts;
+})();
+
+const PARTY_TIME_VALUE_SET = new Set(PARTY_START_TIME_OPTIONS.map((o) => o.value));
+
+const PARTY_TIME_LIST_OPTIONS = [
+  { value: "", label: "Select start time" },
+  ...PARTY_START_TIME_OPTIONS,
+] as const;
+
+const CHARACTER_LIST_OPTIONS = [
+  { value: "", label: "Choose a princess" },
+  ...CHARACTERS.map((c) => ({ value: c.slug, label: c.name })),
+  { value: "surprise", label: "Surprise me!" },
+] as const;
+
+const PACKAGE_LIST_OPTIONS = PACKAGES.map((p) => ({
+  value: p.slug,
+  label: `${p.name} — £${p.price}`,
+}));
+
+function localDateISO(date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 type FormState = BookingPayload & { agreeTerms: boolean };
 
@@ -83,7 +124,9 @@ export default function Book() {
     if (!form.childName.trim()) e.childName = "Please enter your child's name";
     if (!form.childAge.trim()) e.childAge = "Please enter your child's age";
     if (!form.partyDate) e.partyDate = "Please choose a date";
-    if (!form.partyTime) e.partyTime = "Please choose a time";
+    if (!form.partyTime) e.partyTime = "Please choose a start time";
+    else if (!PARTY_TIME_VALUE_SET.has(form.partyTime))
+      e.partyTime = "Please choose a time between 9:00 am and 4:00 pm";
     if (!form.address.trim()) e.address = "Please enter the party address";
     if (!form.character.trim()) e.character = "Please choose a princess";
     if (!form.packageSlug) e.packageSlug = "Please choose a package";
@@ -125,7 +168,7 @@ export default function Book() {
     }
   };
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateISO();
 
   return (
     <>
@@ -225,7 +268,7 @@ export default function Book() {
                   type="number"
                   min={1}
                   max={15}
-                  className="input-magical"
+                  className="input-magical input-magical-enhanced"
                   placeholder="5"
                   value={form.childAge}
                   onChange={(e) => update("childAge", e.target.value)}
@@ -234,25 +277,28 @@ export default function Book() {
             </div>
 
             <h2 className="heading-display text-2xl sm:text-3xl pt-4">Party Details</h2>
+            <p className="text-xs text-inkSoft -mt-1">
+              Any day of the week. Start times from 9:00 am to 4:00 pm (15-minute slots).
+            </p>
 
             <div className="grid sm:grid-cols-2 gap-5">
               <Field label="Party Date" error={errors.partyDate} htmlFor="partyDate">
-                <input
+                <MagicalDateField
                   id="partyDate"
-                  type="date"
                   min={today}
-                  className="input-magical"
                   value={form.partyDate}
-                  onChange={(e) => update("partyDate", e.target.value)}
+                  onChange={(iso) => update("partyDate", iso)}
+                  invalid={!!errors.partyDate}
                 />
               </Field>
               <Field label="Party Start Time" error={errors.partyTime} htmlFor="partyTime">
-                <input
+                <MagicalListbox
                   id="partyTime"
-                  type="time"
-                  className="input-magical"
                   value={form.partyTime}
-                  onChange={(e) => update("partyTime", e.target.value)}
+                  onChange={(v) => update("partyTime", v)}
+                  options={[...PARTY_TIME_LIST_OPTIONS]}
+                  placeholder="Select start time"
+                  invalid={!!errors.partyTime}
                 />
               </Field>
             </div>
@@ -271,34 +317,24 @@ export default function Book() {
 
             <div className="grid sm:grid-cols-2 gap-5">
               <Field label="Selected Princess" error={errors.character} htmlFor="character">
-                <select
+                <MagicalListbox
                   id="character"
-                  className="input-magical appearance-none pr-10"
                   value={form.character}
-                  onChange={(e) => update("character", e.target.value)}
-                >
-                  <option value="">Choose a princess</option>
-                  {CHARACTERS.map((c) => (
-                    <option key={c.slug} value={c.slug}>
-                      {c.name}
-                    </option>
-                  ))}
-                  <option value="surprise">Surprise me!</option>
-                </select>
+                  onChange={(v) => update("character", v)}
+                  options={[...CHARACTER_LIST_OPTIONS]}
+                  placeholder="Choose a princess"
+                  invalid={!!errors.character}
+                />
               </Field>
               <Field label="Selected Package" error={errors.packageSlug} htmlFor="packageSlug">
-                <select
+                <MagicalListbox
                   id="packageSlug"
-                  className="input-magical appearance-none pr-10"
                   value={form.packageSlug}
-                  onChange={(e) => update("packageSlug", e.target.value)}
-                >
-                  {PACKAGES.map((p) => (
-                    <option key={p.slug} value={p.slug}>
-                      {p.name} — £{p.price}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => update("packageSlug", v)}
+                  options={PACKAGE_LIST_OPTIONS}
+                  placeholder="Choose a package"
+                  invalid={!!errors.packageSlug}
+                />
               </Field>
             </div>
 
@@ -307,7 +343,7 @@ export default function Book() {
                 id="numChildren"
                 type="number"
                 min={1}
-                className="input-magical"
+                className="input-magical input-magical-enhanced"
                 placeholder="10"
                 value={form.numChildren}
                 onChange={(e) => update("numChildren", e.target.value)}
