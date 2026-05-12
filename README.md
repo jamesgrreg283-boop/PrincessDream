@@ -109,7 +109,7 @@ Checkout Session using your **secret** key on the server only.
    - `STRIPE_PRICE_30_MINUTE_APPEARANCE`, `STRIPE_PRICE_1_HOUR_PARTY`, `STRIPE_PRICE_2_HOUR_PARTY` — Stripe **Price** IDs (`price_…`) from `npm run stripe:sync-deposits` (see below). When these are set, Checkout uses your Stripe **Products** catalogue; if omitted, Checkout still works using inline `price_data` for the same GBP amounts.
    - `STRIPE_ALLOWED_FRONTEND_ORIGINS` (optional) — comma-separated list of your real site origins, e.g. `https://princessdream.co.uk,https://www.princessdream.co.uk`.  
      If unset, the function still allows `http://localhost:*`, `http://127.0.0.1:*`, and `*.vercel.app` previews.
-   - `VITE_STRIPE_CHECKOUT_ENDPOINT` (optional) — only if the Checkout API is on a **different** origin than the website. Same-domain Vercel deploys do not need it (the app uses `/api/create-checkout-session` on the current host).
+   - `VITE_STRIPE_CHECKOUT_ENDPOINT` (optional) — only if the Checkout API is on a **different** origin than the website. If set, it must be the **full** URL including `/api/create-checkout-session` (not just your homepage URL). Same-domain Vercel deploys can omit it (the app uses `/api/create-checkout-session` on the current host).
 3. **Create deposit products in Stripe (one-time):** from the repo root, with `STRIPE_SECRET_KEY` in `.env.local`:
 
 ```bash

@@ -22,6 +22,9 @@
 
 import type { Package } from "../data/packages";
 
+/** Shown on `/book?checkout_error=1` after a failed Checkout Session POST. */
+export const CHECKOUT_ERROR_STORAGE_KEY = "apd_checkout_error";
+
 /** Per-package Stripe Payment Link URLs. Replace `null` with real URLs. */
 export const STRIPE_PAYMENT_LINKS: Record<string, string | null> = {
   "30-minute-appearance": null, // e.g. "https://buy.stripe.com/xxxxx"
@@ -30,15 +33,31 @@ export const STRIPE_PAYMENT_LINKS: Record<string, string | null> = {
 };
 
 /**
- * Where to POST to create a Stripe Checkout Session.
- * - Prefer explicit VITE_STRIPE_CHECKOUT_ENDPOINT when the API is on another host.
- * - In production builds, default to same-origin `/api/...` so Vercel works
- *   without relying on build-time env injection for that URL.
+ * `VITE_STRIPE_CHECKOUT_ENDPOINT` must be the full URL to the API route, e.g.
+ * `https://example.com/api/create-checkout-session`. If it is only the site
+ * root (missing `/api/...`), we ignore it so POST does not hit the homepage.
  */
-function checkoutSessionUrl(): string | undefined {
-  const fromEnv = (
+function viteCheckoutOverride(): string | undefined {
+  const raw = (
     import.meta.env as { VITE_STRIPE_CHECKOUT_ENDPOINT?: string }
   ).VITE_STRIPE_CHECKOUT_ENDPOINT?.trim();
+  if (!raw) return undefined;
+  try {
+    const u = new URL(raw);
+    if (!u.pathname.includes("create-checkout-session")) return undefined;
+    return u.href.replace(/\/$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Where to POST to create a Stripe Checkout Session.
+ * - Optional `VITE_STRIPE_CHECKOUT_ENDPOINT` when the API is on another host.
+ * - In production builds, default to same-origin `/api/...` on Vercel.
+ */
+function checkoutSessionUrl(): string | undefined {
+  const fromEnv = viteCheckoutOverride();
   if (fromEnv) return fromEnv;
   if (import.meta.env.PROD) {
     return `${window.location.origin}/api/create-checkout-session`;
@@ -95,19 +114,41 @@ export async function redirectToDeposit(
           returnOrigin: window.location.origin,
         }),
       });
+
       if (res.ok) {
         const data = (await res.json()) as { url?: string };
         if (data.url) {
           window.location.href = data.url;
           return;
         }
+        sessionStorage.setItem(
+          CHECKOUT_ERROR_STORAGE_KEY,
+          "The payment service did not return a checkout link. Please try again or call us."
+        );
+      } else {
+        let msg = `Payment could not start (error ${res.status}). Please try again or call us.`;
+        try {
+          const errBody = (await res.json()) as { error?: string };
+          if (errBody?.error) msg = errBody.error;
+        } catch {
+          /* ignore non-JSON body */
+        }
+        sessionStorage.setItem(CHECKOUT_ERROR_STORAGE_KEY, msg);
       }
+      window.location.href = "/book?checkout_error=1";
+      return;
     } catch (e) {
       console.error("Stripe checkout failed:", e);
+      sessionStorage.setItem(
+        CHECKOUT_ERROR_STORAGE_KEY,
+        "We couldn't reach the payment service. Check your connection and try again, or call us to book."
+      );
+      window.location.href = "/book?checkout_error=1";
+      return;
     }
   }
 
-  // 3. Local fallback
+  // 3. Local fallback (no API URL — e.g. `npm run dev` without env)
   sessionStorage.setItem("apd_booking", JSON.stringify(booking));
   window.location.href = "/booking-success?dev=1";
 }

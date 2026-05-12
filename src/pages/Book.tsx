@@ -8,7 +8,7 @@ import { PACKAGES, depositFor, remainingFor } from "../data/packages";
 import { CHARACTERS } from "../data/characters";
 import { SITE, TRUST_BADGES } from "../data/site";
 import TrustBadges from "../components/TrustBadges";
-import { redirectToDeposit, type BookingPayload } from "../lib/stripe";
+import { redirectToDeposit, type BookingPayload, CHECKOUT_ERROR_STORAGE_KEY } from "../lib/stripe";
 
 type FormState = BookingPayload & { agreeTerms: boolean };
 
@@ -29,13 +29,26 @@ const initialState: FormState = {
 };
 
 export default function Book() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [form, setForm] = useState<FormState>(initialState);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [checkoutErrorBanner, setCheckoutErrorBanner] = useState<string | null>(null);
 
   const pkgParam = searchParams.get("package");
   const charParam = searchParams.get("character");
+
+  useEffect(() => {
+    if (searchParams.get("checkout_error") !== "1") return;
+    const msg = sessionStorage.getItem(CHECKOUT_ERROR_STORAGE_KEY);
+    sessionStorage.removeItem(CHECKOUT_ERROR_STORAGE_KEY);
+    setCheckoutErrorBanner(
+      msg ?? "We couldn't start the card payment. Please try again or call us to complete your booking."
+    );
+    const next = new URLSearchParams(searchParams);
+    next.delete("checkout_error");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Pre-select from query string (deferred setState avoids cascading-render lint)
   useEffect(() => {
@@ -144,6 +157,15 @@ export default function Book() {
             className="card-magical p-6 sm:p-8 lg:p-10 space-y-5"
             noValidate
           >
+            {checkoutErrorBanner && (
+              <div
+                role="alert"
+                className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-sm"
+              >
+                <strong className="block mb-1">Payment didn&apos;t complete</strong>
+                {checkoutErrorBanner}
+              </div>
+            )}
             <h2 className="heading-display text-2xl sm:text-3xl">Your Details</h2>
 
             <Field label="Parent Name" error={errors.parentName} htmlFor="parentName">

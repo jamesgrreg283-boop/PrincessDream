@@ -41,11 +41,22 @@ export default function BookingSuccess() {
           </p>
 
           {dev && (
-            <div className="mt-6 mx-auto max-w-md p-4 rounded-2xl bg-pinkSoft/60 text-sm text-ink">
-              <strong>Dev mode:</strong> no live checkout ran (no Payment Link,
-              no <code className="bg-white px-1.5 py-0.5 rounded">/api/create-checkout-session</code>{" "}
-              on this host in dev, and no <code className="bg-white px-1.5 py-0.5 rounded">VITE_STRIPE_CHECKOUT_ENDPOINT</code>
-              ). See README for Stripe setup.
+            <div className="mt-6 mx-auto max-w-md p-4 rounded-2xl bg-pinkSoft/60 text-sm text-ink text-left">
+              <strong className="block mb-2">No deposit was taken online.</strong>
+              <p className="mb-2">
+                The <code className="bg-white px-1 rounded text-xs">?dev=1</code> in the
+                address only means the card step was skipped — it does{" "}
+                <em>not</em> mean your whole website is in &quot;developer mode&quot;.
+              </p>
+              <p className="mb-2">
+                This usually happens when you run the site locally, or when the
+                payment step could not start. On the live site, try{" "}
+                <Link to="/book" className="text-pinkDeep underline font-medium">
+                  Book again
+                </Link>
+                ; if it keeps happening, call us and we&apos;ll take your deposit over
+                the phone.
+              </p>
             </div>
           )}
 
