@@ -134,7 +134,8 @@ export default async function handler(req, res) {
   const available = await isSlotAvailable(
     supabase,
     booking.partyDate,
-    booking.partyTime
+    booking.partyTime,
+    booking.packageSlug
   );
   if (!available) {
     return res.status(409).json({
@@ -145,7 +146,7 @@ export default async function handler(req, res) {
 
   const holdMin = Math.max(
     5,
-    Math.min(120, Number(process.env.BOOKING_PENDING_HOLD_MINUTES || 30))
+    Math.min(120, Number(process.env.BOOKING_PENDING_HOLD_MINUTES || 15))
   );
   const holdExpires = new Date(Date.now() + holdMin * 60 * 1000).toISOString();
 
@@ -173,7 +174,11 @@ export default async function handler(req, res) {
   } catch (e) {
     await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
     if (e && e.code === "PRICE_MISMATCH") {
-      return res.status(500).json({ error: e.message });
+      return res.status(422).json({
+        error: "stripe_price_mismatch",
+        message:
+          "The Stripe Price for this package does not match the deposit amount configured on this site. In Stripe Dashboard, set that Price to the correct GBP one-time amount, run `npm run stripe:sync-deposits`, or remove the STRIPE_PRICE_* environment variable so Checkout builds the price automatically.",
+      });
     }
     const msg =
       e && typeof e.message === "string" ? e.message : "Stripe line item error";
@@ -195,7 +200,7 @@ export default async function handler(req, res) {
       customer_email: email,
       line_items,
       success_url: `${base}/booking-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${base}/book?canceled=1`,
+      cancel_url: `${base}/book?canceled=1&session_id={CHECKOUT_SESSION_ID}`,
       client_reference_id: bookingId,
       metadata: {
         booking_id: bookingId,

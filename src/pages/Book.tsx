@@ -75,6 +75,7 @@ export default function Book() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [checkoutErrorBanner, setCheckoutErrorBanner] = useState<string | null>(null);
+  const [noticeBanner, setNoticeBanner] = useState<string | null>(null);
   const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
 
   const pkgParam = searchParams.get("package");
@@ -108,6 +109,54 @@ export default function Book() {
     return () => cancelAnimationFrame(id);
   }, [pkgParam, charParam]);
 
+  /** Stripe sends users here with ?canceled=1&session_id=… — release pending hold immediately. */
+  useEffect(() => {
+    if (searchParams.get("canceled") !== "1") return;
+    const sessionId = searchParams.get("session_id")?.trim();
+    if (!sessionId) return;
+    const partyDate = form.partyDate;
+    const packageSlug = form.packageSlug;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await fetch(`${window.location.origin}/api/cancel-checkout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+      } catch {
+        /* ignore */
+      }
+      if (cancelled) return;
+      if (partyDate) {
+        try {
+          const r = await fetch(
+            `${window.location.origin}/api/check-availability?date=${encodeURIComponent(partyDate)}&packageSlug=${encodeURIComponent(packageSlug)}`
+          );
+          if (r.ok) {
+            const data = (await r.json()) as { occupiedTimes?: string[] };
+            if (!cancelled && Array.isArray(data.occupiedTimes)) {
+              setOccupiedTimes(data.occupiedTimes);
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      if (cancelled) return;
+      const next = new URLSearchParams(searchParams);
+      next.delete("canceled");
+      next.delete("session_id");
+      setSearchParams(next, { replace: true });
+      setNoticeBanner(
+        "Checkout was cancelled — we’ve released that time slot. You can book the same time again if it’s still free."
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, setSearchParams, form.partyDate, form.packageSlug]);
+
   const selectedPackage = useMemo(
     () => PACKAGES.find((p) => p.slug === form.packageSlug) ?? PACKAGES[1],
     [form.packageSlug]
@@ -130,7 +179,7 @@ export default function Book() {
     void (async () => {
       try {
         const res = await fetch(
-          `${window.location.origin}/api/check-availability?date=${encodeURIComponent(form.partyDate)}`
+          `${window.location.origin}/api/check-availability?date=${encodeURIComponent(form.partyDate)}&packageSlug=${encodeURIComponent(form.packageSlug)}`
         );
         if (!res.ok) return;
         const data = (await res.json()) as { occupiedTimes?: string[] };
@@ -144,7 +193,7 @@ export default function Book() {
     return () => {
       cancelled = true;
     };
-  }, [form.partyDate]);
+  }, [form.partyDate, form.packageSlug]);
 
   useEffect(() => {
     if (!form.partyTime || !occupiedTimes.includes(form.partyTime)) return;
@@ -279,6 +328,14 @@ export default function Book() {
               >
                 <strong className="block mb-1">Payment didn&apos;t complete</strong>
                 {checkoutErrorBanner}
+              </div>
+            )}
+            {noticeBanner && (
+              <div
+                role="status"
+                className="p-4 rounded-xl bg-sky-50 border border-sky-200 text-sky-950 text-sm"
+              >
+                {noticeBanner}
               </div>
             )}
             <h2 className="heading-display text-2xl sm:text-3xl">Your Details</h2>

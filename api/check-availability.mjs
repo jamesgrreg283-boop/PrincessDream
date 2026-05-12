@@ -5,6 +5,7 @@ import {
   handleOptions,
   isAllowedFrontendOrigin,
 } from "./_lib/cors.mjs";
+import { packageBySlug } from "./_lib/packages.mjs";
 import {
   getOccupiedTimesForDate,
   isSlotAvailable,
@@ -35,6 +36,12 @@ export default async function handler(req, res) {
 
   const date = String(req.query?.date || "").trim();
   const time = String(req.query?.time || "").trim();
+  const rawPkg = String(req.query?.packageSlug ?? "").trim();
+  if (rawPkg && !packageBySlug(rawPkg)) {
+    return res.status(400).json({ error: "Invalid packageSlug" });
+  }
+  /** Longest package when omitted — conservative “grey out” list. */
+  const packageSlug = rawPkg ? packageBySlug(rawPkg).slug : "2-hour-party";
 
   if (!isValidPartyDate(date)) {
     return res.status(400).json({ error: "Invalid or missing date" });
@@ -45,11 +52,11 @@ export default async function handler(req, res) {
       if (!isValidPartyTime(time)) {
         return res.status(400).json({ error: "Invalid time" });
       }
-      const available = await isSlotAvailable(supabase, date, time);
+      const available = await isSlotAvailable(supabase, date, time, packageSlug);
       return res.status(200).json({ available, partyDate: date, partyTime: time });
     }
 
-    const occupiedTimes = await getOccupiedTimesForDate(supabase, date);
+    const occupiedTimes = await getOccupiedTimesForDate(supabase, date, packageSlug);
     return res.status(200).json({ occupiedTimes, partyDate: date });
   } catch (e) {
     console.error(e);

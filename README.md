@@ -126,6 +126,10 @@ Local testing: run `npx vercel dev` from the repo root (serves the Vite app and 
 
 The booking form POSTs `{ currency, packageSlug, booking, returnOrigin }`. The **deposit in pence** is chosen on the server from `packageSlug` (it does not trust a client-supplied amount).
 
+If you see **“Stripe price … must be GBP one-time for X pence”** (or the friendlier JSON `stripe_price_mismatch` in the network tab), your `STRIPE_PRICE_*` Price in Stripe does not match the deposit configured in `api/create-checkout-session.mjs` / `api/_lib/packages.mjs`. Fix the Price amount in Stripe, re-run `npm run stripe:sync-deposits`, or **remove** the `STRIPE_PRICE_*` variables so Checkout uses automatic `price_data` for the correct amount.
+
+**Availability:** Confirmed bookings and **unpaid** checkout holds block the calendar. Holds expire after `BOOKING_PENDING_HOLD_MINUTES` (default **15**), when Stripe sends `checkout.session.expired`, or when the customer returns via **Cancel** on Checkout (the site calls `api/cancel-checkout` and cancels the pending row). Between parties, `BOOKING_TRAVEL_BUFFER_MINUTES` (default **60**) is enforced so the next start time must be at least that long after the previous party **ends** (party length comes from the package: 30 min, 1 hr, or 2 hr).
+
 ### Dev mode
 
 If neither Payment Links nor a reachable Checkout Session URL is available, the form simulates a successful submission and routes to `/booking-success?dev=1` so you can test the flow.

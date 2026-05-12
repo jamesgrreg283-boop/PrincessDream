@@ -98,7 +98,8 @@ export default async function handler(req, res) {
     const available = await isSlotAvailable(
       supabase,
       booking.partyDate,
-      booking.partyTime
+      booking.partyTime,
+      booking.packageSlug
     );
     if (!available) {
       return res.status(409).json({

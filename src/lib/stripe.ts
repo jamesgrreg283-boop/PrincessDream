@@ -128,8 +128,9 @@ export async function redirectToDeposit(
       } else {
         let msg = `Payment could not start (error ${res.status}). Please try again or call us.`;
         try {
-          const errBody = (await res.json()) as { error?: string };
-          if (errBody?.error) msg = errBody.error;
+          const errBody = (await res.json()) as { error?: string; message?: string };
+          if (errBody?.message) msg = errBody.message;
+          else if (errBody?.error) msg = errBody.error;
           else if (res.status === 409) {
             msg =
               "That date and time is no longer available. Please choose another slot.";
