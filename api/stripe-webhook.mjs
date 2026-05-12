@@ -83,9 +83,19 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "Update failed" });
       }
 
-      if (updated) {
+      if (!updated) {
+        console.warn(
+          `checkout.session.completed: no pending booking updated (already confirmed/cancelled or wrong id?) — booking_id=${bookingId} — confirmation emails not sent`
+        );
+      } else {
         try {
-          await sendBookingConfirmationEmails(updated);
+          const mailResult = await sendBookingConfirmationEmails(updated);
+          if (mailResult?.skipped) {
+            console.warn("Confirmation emails skipped:", mailResult.reason);
+          }
+          if (mailResult?.errors?.length) {
+            console.error("Confirmation emails partial failure:", mailResult.errors);
+          }
         } catch (mailErr) {
           console.error("Confirmation email error:", mailErr);
         }

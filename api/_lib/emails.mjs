@@ -69,9 +69,17 @@ export async function sendBookingConfirmationEmails(row) {
     process.env.NOTIFY_EMAIL_TO?.trim() ||
     "princessdreamuk@gmail.com";
 
-  if (!apiKey || !from) {
-    console.warn("RESEND_API_KEY or RESEND_FROM_EMAIL missing — skipping emails");
-    return { skipped: true };
+  if (!apiKey) {
+    console.warn(
+      "Booking emails skipped: RESEND_API_KEY is not set (add it in Vercel → Environment Variables for production; .env.local is not deployed)."
+    );
+    return { skipped: true, reason: "missing_RESEND_API_KEY" };
+  }
+  if (!from) {
+    console.warn(
+      "Booking emails skipped: RESEND_FROM_EMAIL is not set (must be a verified sender/domain in Resend)."
+    );
+    return { skipped: true, reason: "missing_RESEND_FROM_EMAIL" };
   }
 
   const resend = new Resend(apiKey);
@@ -92,8 +100,25 @@ export async function sendBookingConfirmationEmails(row) {
     }),
   ]);
 
-  if (toAdmin.error) console.error("Resend admin booking email:", toAdmin.error);
-  if (toCustomer.error) console.error("Resend customer email:", toCustomer.error);
+  const errors = [];
+  if (toAdmin.error) {
+    console.error("Resend admin booking email failed:", JSON.stringify(toAdmin.error));
+    errors.push({ target: "admin", error: toAdmin.error });
+  }
+  if (toCustomer.error) {
+    console.error("Resend customer email failed:", JSON.stringify(toCustomer.error));
+    errors.push({ target: "customer", error: toCustomer.error });
+  }
 
-  return { toAdmin, toCustomer };
+  if (errors.length) {
+    console.error(
+      `Resend: admin→${adminInbox}, customer→${row.email}, from=${from}. Fix domain verification or API key in Resend dashboard.`
+    );
+  } else {
+    console.log(
+      `Booking confirmation emails sent (admin ${adminInbox}, customer ${row.email})`
+    );
+  }
+
+  return { toAdmin, toCustomer, errors: errors.length ? errors : undefined };
 }
