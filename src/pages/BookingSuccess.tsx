@@ -42,8 +42,9 @@ export default function BookingSuccess() {
 
           {dev && (
             <div className="mt-6 mx-auto max-w-md p-4 rounded-2xl bg-pinkSoft/60 text-sm text-ink">
-              <strong>Dev mode:</strong> no live checkout ran (missing Payment
-              Link or <code className="bg-white px-1.5 py-0.5 rounded">VITE_STRIPE_CHECKOUT_ENDPOINT</code>
+              <strong>Dev mode:</strong> no live checkout ran (no Payment Link,
+              no <code className="bg-white px-1.5 py-0.5 rounded">/api/create-checkout-session</code>{" "}
+              on this host in dev, and no <code className="bg-white px-1.5 py-0.5 rounded">VITE_STRIPE_CHECKOUT_ENDPOINT</code>
               ). See README for Stripe setup.
             </div>
           )}

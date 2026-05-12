@@ -9,13 +9,12 @@
 //    Stripe will handle the entire checkout, success and cancel flow.
 //
 // 2) CHECKOUT SESSION (programmatic):
-//    Deploy the included Vercel function `api/create-checkout-session.mjs` and
-//    set STRIPE_SECRET_KEY in the Vercel project (never in the browser).
-//    In `.env.local` set VITE_STRIPE_CHECKOUT_ENDPOINT to your deployed URL,
-//    e.g. https://your-site.vercel.app/api/create-checkout-session
-//    The client POSTs { currency, packageSlug, booking, returnOrigin }; the
-//    server chooses the deposit amount from packageSlug (do not trust client
-//    amounts).
+//    Deploy `api/create-checkout-session.mjs` (e.g. on Vercel) and set
+//    STRIPE_SECRET_KEY (+ optional STRIPE_PRICE_* ) on the host.
+//    In production, if `VITE_STRIPE_CHECKOUT_ENDPOINT` is unset, the client
+//    POSTs to same-origin `/api/create-checkout-session` (works on Vercel
+//    with the API in this repo). Override with `VITE_STRIPE_CHECKOUT_ENDPOINT`
+//    when the API lives on another domain.
 //
 // During development (no Stripe configured), the booking form simulates a
 // successful submission and routes to /booking-success.
@@ -30,10 +29,22 @@ export const STRIPE_PAYMENT_LINKS: Record<string, string | null> = {
   "2-hour-party": null,
 };
 
-/** Optional API endpoint that creates a Stripe Checkout Session. */
-export const CHECKOUT_ENDPOINT: string | undefined = (
-  import.meta.env as { VITE_STRIPE_CHECKOUT_ENDPOINT?: string }
-).VITE_STRIPE_CHECKOUT_ENDPOINT;
+/**
+ * Where to POST to create a Stripe Checkout Session.
+ * - Prefer explicit VITE_STRIPE_CHECKOUT_ENDPOINT when the API is on another host.
+ * - In production builds, default to same-origin `/api/...` so Vercel works
+ *   without relying on build-time env injection for that URL.
+ */
+function checkoutSessionUrl(): string | undefined {
+  const fromEnv = (
+    import.meta.env as { VITE_STRIPE_CHECKOUT_ENDPOINT?: string }
+  ).VITE_STRIPE_CHECKOUT_ENDPOINT?.trim();
+  if (fromEnv) return fromEnv;
+  if (import.meta.env.PROD) {
+    return `${window.location.origin}/api/create-checkout-session`;
+  }
+  return undefined;
+}
 
 export type BookingPayload = {
   parentName: string;
@@ -53,7 +64,7 @@ export type BookingPayload = {
 /**
  * Redirect the user to Stripe for the deposit. Strategy:
  * 1. If a Payment Link is configured for the package, use it directly.
- * 2. Otherwise, if a CHECKOUT_ENDPOINT exists, POST and follow the returned url.
+ * 2. Otherwise POST to the Checkout Session URL (see `checkoutSessionUrl()`).
  * 3. Otherwise, fallback to a local success page (dev mode).
  */
 export async function redirectToDeposit(
@@ -70,10 +81,11 @@ export async function redirectToDeposit(
   }
 
   // 2. Checkout Session endpoint
-  if (CHECKOUT_ENDPOINT) {
+  const checkoutUrl = checkoutSessionUrl();
+  if (checkoutUrl) {
     try {
       sessionStorage.setItem("apd_booking", JSON.stringify(booking));
-      const res = await fetch(CHECKOUT_ENDPOINT, {
+      const res = await fetch(checkoutUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

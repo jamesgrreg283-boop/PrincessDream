@@ -109,6 +109,7 @@ Checkout Session using your **secret** key on the server only.
    - `STRIPE_PRICE_30_MINUTE_APPEARANCE`, `STRIPE_PRICE_1_HOUR_PARTY`, `STRIPE_PRICE_2_HOUR_PARTY` — Stripe **Price** IDs (`price_…`) from `npm run stripe:sync-deposits` (see below). When these are set, Checkout uses your Stripe **Products** catalogue; if omitted, Checkout still works using inline `price_data` for the same GBP amounts.
    - `STRIPE_ALLOWED_FRONTEND_ORIGINS` (optional) — comma-separated list of your real site origins, e.g. `https://princessdream.co.uk,https://www.princessdream.co.uk`.  
      If unset, the function still allows `http://localhost:*`, `http://127.0.0.1:*`, and `*.vercel.app` previews.
+   - `VITE_STRIPE_CHECKOUT_ENDPOINT` (optional) — only if the Checkout API is on a **different** origin than the website. Same-domain Vercel deploys do not need it (the app uses `/api/create-checkout-session` on the current host).
 3. **Create deposit products in Stripe (one-time):** from the repo root, with `STRIPE_SECRET_KEY` in `.env.local`:
 
 ```bash
@@ -118,16 +119,17 @@ npm run stripe:sync-deposits
 Copy the printed `STRIPE_PRICE_*=price_…` lines into `.env.local` and into the same variables on Vercel, then redeploy.
 
 4. Copy `.env.example` to `.env.local` (gitignored) and set:
-   - `VITE_STRIPE_CHECKOUT_ENDPOINT` — full URL to the function, e.g. `https://your-project.vercel.app/api/create-checkout-session`
+   - `VITE_STRIPE_CHECKOUT_ENDPOINT` (optional on Vercel) — only needed if the API is **not** on the same domain as the site. On Vercel with this repo, production uses **`/api/create-checkout-session`** on the same origin automatically.
+   - For local `npm run dev` without `vercel dev`, set `VITE_STRIPE_CHECKOUT_ENDPOINT` to your full API URL (e.g. `http://localhost:3000/api/create-checkout-session`).
    - `VITE_STRIPE_PUBLISHABLE_KEY` (optional) — your `pk_test_…` / `pk_live_…` if you later add Stripe.js; the redirect flow does not require it today.
 
-Local testing: run `npx vercel dev` from the repo root (serves the Vite app and `/api/*` together), then set `VITE_STRIPE_CHECKOUT_ENDPOINT` to `http://localhost:3000/api/create-checkout-session` (or whatever URL the CLI prints) and add `STRIPE_SECRET_KEY` to `.env.local` for the serverless runtime.
+Local testing: run `npx vercel dev` from the repo root (serves the Vite app and `/api/*` together), then add `STRIPE_SECRET_KEY` to `.env.local` for the serverless runtime. You do not need `VITE_STRIPE_CHECKOUT_ENDPOINT` when using `vercel dev` on one port if the CLI serves both app and API on the same origin.
 
 The booking form POSTs `{ currency, packageSlug, booking, returnOrigin }`. The **deposit in pence** is chosen on the server from `packageSlug` (it does not trust a client-supplied amount).
 
 ### Dev mode
 
-If neither Payment Links nor `VITE_STRIPE_CHECKOUT_ENDPOINT` is configured, the form simulates a successful submission and routes to `/booking-success?dev=1` so you can test the flow.
+If neither Payment Links nor a reachable Checkout Session URL is available, the form simulates a successful submission and routes to `/booking-success?dev=1` so you can test the flow.
 
 ---
 
