@@ -1,0 +1,222 @@
+/* ==========================================================================
+   PrincessDream — global styles
+   Brand palette, typography, magical effects.
+   Fonts are preconnected/loaded in index.html for performance.
+   ========================================================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply font-body text-ink antialiased;
+  /* pagePink — literal color: @apply bg-pagePink can fail in CSS entry on some setups */
+  background-color: #c995ae;
+  background-image:
+    radial-gradient(ellipse 100% 70% at 50% -15%, rgba(255, 255, 255, 0.07) 0, transparent 52%),
+    radial-gradient(circle at 10% 35%, rgba(120, 48, 78, 0.14) 0, transparent 42%),
+    radial-gradient(circle at 92% 55%, rgba(90, 36, 58, 0.12) 0, transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(176, 125, 148, 0.35) 0, transparent 48%);
+  background-attachment: scroll;
+}
+
+::selection {
+  background: #db2777;
+  color: white;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full
+           font-semibold tracking-wide text-white
+           hover:scale-[1.03]
+           active:scale-[0.98]
+           transition-all duration-300
+           focus:outline-none focus-visible:ring-4 focus-visible:ring-pinkDeep/35;
+    /* shadow-accent / shadow-magical: literal — @apply custom shadow-* can fail in this file */
+    box-shadow: 0 12px 32px -10px rgba(219, 39, 119, 0.45);
+    background-image: linear-gradient(
+      135deg,
+      #fbcfe8 0%,
+      #f472b6 38%,
+      #db2777 72%,
+      #9d174d 100%
+    );
+    background-size: 200% 200%;
+    background-position: 0% 50%;
+  }
+  .btn-primary:hover {
+    background-position: 100% 50%;
+    box-shadow: 0 20px 50px -20px rgba(216, 27, 96, 0.25);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full
+           font-semibold tracking-wide text-pinkDeep
+           bg-white border-2 border-pinkBlush
+           hover:bg-pinkSoft hover:scale-[1.03] hover:shadow-soft
+           active:scale-[0.98]
+           transition-all duration-300
+           focus:outline-none focus-visible:ring-4 focus-visible:ring-pinkBlush/50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full
+           font-medium text-ink/80 hover:text-pinkDeep
+           hover:bg-pinkSoft/60 transition-colors duration-200;
+  }
+
+  .card-magical {
+    @apply bg-white rounded-3xl shadow-soft overflow-hidden border border-pinkSoft/70
+           transition-all duration-300 hover:shadow-magical hover:-translate-y-1;
+  }
+
+  .heading-display {
+    @apply font-display font-bold tracking-tight text-ink;
+  }
+
+  .heading-eyebrow {
+    @apply font-cinzel uppercase tracking-[0.3em] text-[0.72rem] text-pinkDeep font-semibold;
+  }
+
+  .container-px {
+    @apply px-5 sm:px-8 lg:px-12;
+  }
+
+  .section-pad {
+    @apply py-16 sm:py-20 lg:py-28;
+  }
+
+  /* Pink accent word in titles (replaces former gold gradient text) */
+  .accent-text {
+    @apply bg-gradient-to-br from-pinkBlush via-pinkDeep to-rose-900 bg-clip-text text-transparent;
+    background-size: 200% auto;
+  }
+
+  .accent-hr {
+    @apply h-px w-24 mx-auto rounded-full bg-gradient-to-r from-transparent via-pinkDeep/50 to-transparent;
+  }
+
+  .label-floating {
+    @apply absolute left-4 -top-2.5 px-2 text-xs font-medium text-inkSoft bg-white
+           rounded-md;
+  }
+
+  .input-magical {
+    @apply w-full px-4 py-3.5 rounded-xl border border-pinkSoft bg-white
+           text-ink placeholder:text-inkSoft/50
+           focus:outline-none focus:ring-2 focus:ring-pinkBlush focus:border-pinkBlush
+           transition-all duration-200;
+  }
+}
+
+/* Backdrop sparkle pulse */
+@keyframes apd-pulse-star {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apd-backdrop-star {
+    animation: none !important;
+    opacity: 0.55 !important;
+    transform: none !important;
+  }
+
+  .sparkle,
+  .sparkle-gold {
+    animation: none !important;
+    opacity: 0.55 !important;
+    transform: none !important;
+  }
+}
+
+/* Section sparkle dots — opacity + scale3d only (no filters: each drop-shadow
+   repaints; dozens of dots caused jank). Static box-shadow composites cheaply. */
+@keyframes apd-sparkle-twinkle {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale3d(0.94, 0.94, 1);
+  }
+  50% {
+    opacity: 0.92;
+    transform: scale3d(1.05, 1.05, 1);
+  }
+}
+
+/* White sparkles */
+.sparkle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 42% 38%,
+    #ffffff 0%,
+    rgba(255, 255, 255, 0.9) 22%,
+    rgba(255, 228, 244, 0.45) 48%,
+    transparent 70%
+  );
+  box-shadow:
+    0 0 10px 2px rgba(255, 255, 255, 0.28),
+    0 0 3px 1px rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+  backface-visibility: hidden;
+  animation: apd-sparkle-twinkle 4.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+/* Gold sparkles — white sections only */
+.sparkle-gold {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 42% 38%,
+    #fffef8 0%,
+    #fef3c7 26%,
+    #f1d87a 48%,
+    transparent 72%
+  );
+  box-shadow:
+    0 0 9px 2px rgba(241, 216, 122, 0.32),
+    0 0 3px 1px rgba(254, 243, 199, 0.55);
+  pointer-events: none;
+  backface-visibility: hidden;
+  animation: apd-sparkle-twinkle 4.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+/* Subtle masonry helper */
+.masonry {
+  column-gap: 1rem;
+}
+@media (min-width: 640px) {
+  .masonry { column-count: 2; }
+}
+@media (min-width: 1024px) {
+  .masonry { column-count: 3; }
+}
+.masonry > * {
+  break-inside: avoid;
+  margin-bottom: 1rem;
+}
+
+/* Hide scrollbar for horizontal scroll rows (mobile-friendly) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
