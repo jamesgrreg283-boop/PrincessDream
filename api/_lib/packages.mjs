@@ -4,7 +4,7 @@ export const PACKAGES = [
     slug: "30-minute-appearance",
     name: "30 Minute Appearance",
     price: 100,
-    // TODO: restore 40 after testing — must match src/data/packages.ts depositOnline
+    /** £1 for Stripe test checkouts; switch to 40 when you go live with £40 Stripe Price + env. */
     depositOnline: 1,
     durationMinutes: 30,
   },

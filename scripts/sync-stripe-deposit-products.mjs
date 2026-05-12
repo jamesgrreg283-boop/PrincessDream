@@ -19,7 +19,7 @@ const DEPOSITS = [
     name: "PrincessDream — 30 Minute Appearance (deposit)",
     description:
       "Online deposit to secure a 30-minute princess appearance. Balance due before the party.",
-    // TODO: restore 4000 after testing — must match create-checkout-session DEPOSITS_PENCE
+    /** 100 = £1 test deposit; use 4000 for live £40 catalogue (must match create-checkout-session). */
     unitAmountPence: 100,
   },
   {
@@ -71,6 +71,14 @@ async function main() {
   if (!secret) {
     console.error(
       "Missing STRIPE_SECRET_KEY. Run:\n  node --env-file=.env.local scripts/sync-stripe-deposit-products.mjs"
+    );
+    process.exit(1);
+  }
+
+  if (!/^sk_(test|live)_/.test(secret)) {
+    console.error(
+      "STRIPE_SECRET_KEY must start with sk_test_ or sk_live_ (standard Secret key from Stripe → Developers → API keys).\n" +
+        `Got prefix: ${secret.slice(0, 7)}…`
     );
     process.exit(1);
   }

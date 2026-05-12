@@ -9,7 +9,13 @@ import {
 import { packageBySlug } from "./_lib/packages.mjs";
 
 const DEPOSITS_PENCE = {
-  // TODO: restore 4000 after testing — must match packages deposit in pence
+  /**
+   * Must match `api/_lib/packages.mjs` depositOnline (pence).
+   * 30-min is intentionally **£1 (100p)** for cheap Stripe test checkouts.
+   * Your Stripe catalogue may still show £40 — either leave
+   * `STRIPE_PRICE_30_MINUTE_APPEARANCE` **unset** (Checkout uses inline `price_data`),
+   * or create a separate £1 Price in Stripe and point the env var at that `price_…`.
+   */
   "30-minute-appearance": 100,
   "1-hour-party": 5000,
   "2-hour-party": 5000,
@@ -37,6 +43,11 @@ async function buildLineItems(stripe, packageSlug, currency) {
         `Stripe price ${priceId} must be GBP one-time for ${expected} pence.`
       );
       err.code = "PRICE_MISMATCH";
+      err.priceId = priceId;
+      err.packageSlug = packageSlug;
+      err.expectedPence = expected;
+      err.actualUnitAmount = price.unit_amount;
+      err.actualCurrency = price.currency;
       throw err;
     }
     return [{ price: priceId, quantity: 1 }];
@@ -174,10 +185,22 @@ export default async function handler(req, res) {
   } catch (e) {
     await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
     if (e && e.code === "PRICE_MISMATCH") {
+      const exp = e.expectedPence;
+      const act = e.actualUnitAmount;
+      const cur = e.actualCurrency;
+      const pid = e.priceId;
+      const slug = e.packageSlug;
+      const gbp = (pence) =>
+        typeof pence === "number" && Number.isFinite(pence)
+          ? `£${(pence / 100).toFixed(2)} (${pence} pence)`
+          : "unknown";
+      const detail =
+        typeof exp === "number" && typeof act === "number"
+          ? `Package "${slug}" expects deposit ${gbp(exp)}, but Stripe Price ${pid} is ${gbp(act)} in ${String(cur || "").toLowerCase() || "?"}. `
+          : "";
       return res.status(422).json({
         error: "stripe_price_mismatch",
-        message:
-          "The Stripe Price for this package does not match the deposit amount configured on this site. In Stripe Dashboard, set that Price to the correct GBP one-time amount, run `npm run stripe:sync-deposits`, or remove the STRIPE_PRICE_* environment variable so Checkout builds the price automatically.",
+        message: `${detail}Common fix: in Vercel, each STRIPE_PRICE_* value must be the Price ID from the matching Stripe product (not just a similar name). Open Stripe → Products → pick the right product → Pricing → copy that price_… ID. Or remove all STRIPE_PRICE_* variables so Checkout uses automatic amounts. Run \`npm run stripe:sync-deposits\` after changing deposits in code.`,
       });
     }
     const msg =

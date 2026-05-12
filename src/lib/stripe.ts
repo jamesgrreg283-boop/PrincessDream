@@ -5,7 +5,7 @@
 //
 // 1) HOSTED PAYMENT LINKS (easiest — recommended to start):
 //    Create three Payment Links in your Stripe Dashboard (one per package),
-//    each charging the deposit amount (£1 test / £50 / £50 while 30-min is £1). Paste the URLs below.
+//    each charging the deposit amount (£1 test / £50 / £50 for 30-min / 1hr / 2hr). Paste the URLs below.
 //    Stripe will handle the entire checkout, success and cancel flow.
 //
 // 2) CHECKOUT SESSION (programmatic):

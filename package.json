@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "hero:webp": "node scripts/hero-png-to-webp.mjs",
     "stripe:sync-deposits": "node --env-file=.env.local scripts/sync-stripe-deposit-products.mjs",
+    "stripe:create-30min-1gbp-deposit": "node --env-file=.env.local scripts/create-stripe-30min-one-pound-deposit.mjs",
     "db:apply-bookings": "node --env-file=.env.local scripts/apply-bookings-schema.mjs"
   },
   "dependencies": {
