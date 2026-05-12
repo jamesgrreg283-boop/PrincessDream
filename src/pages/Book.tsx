@@ -350,7 +350,12 @@ export default function Book() {
 
             <h2 className="heading-display text-2xl sm:text-3xl pt-4">Party Details</h2>
             <p className="text-xs text-inkSoft -mt-1">
-              Any day of the week. Start times from 9:00 am to 4:00 pm (15-minute slots).
+              Parties can be booked any day of the week. Pick when the visit{" "}
+              <strong className="font-semibold text-ink">starts</strong>: we offer arrivals from 9:00
+              am to 4:00 pm in 15-minute steps so we can fit bookings around each other. With your
+              current package, the princess stays for{" "}
+              <strong className="font-semibold text-ink">{selectedPackage.duration}</strong> from
+              that start time.
             </p>
 
             <div className="grid sm:grid-cols-2 gap-5">

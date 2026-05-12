@@ -13,9 +13,10 @@ export function isAllowedFrontendOrigin(origin) {
     const { hostname } = u;
     if (hostname.endsWith(".vercel.app")) return true;
 
-    if (extras.length > 0) {
-      return extras.includes(origin);
-    }
+    // Extras are *additional* allowed origins (e.g. alternate domains). They must
+    // not replace the default HTTPS rule, or any HTTPS site breaks whenever this
+    // env var is set (common misconfiguration vs www/apex or custom domains).
+    if (extras.includes(origin)) return true;
 
     if (u.protocol === "https:" && hostname.length > 0) return true;
     return false;

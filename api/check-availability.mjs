@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "./_lib/supabase.mjs";
 import {
   applyCors,
+  getRequestOrigin,
   handleOptions,
   isAllowedFrontendOrigin,
 } from "./_lib/cors.mjs";
@@ -12,7 +13,7 @@ import {
 } from "./_lib/availability.mjs";
 
 export default async function handler(req, res) {
-  const requestOrigin = req.headers.origin || "";
+  const requestOrigin = getRequestOrigin(req);
   if (handleOptions(req, res)) return;
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });

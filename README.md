@@ -107,7 +107,7 @@ Checkout Session using your **secret** key on the server only.
 2. In the Vercel project → **Settings → Environment Variables**, add:
    - `STRIPE_SECRET_KEY` — your `sk_test_…` or `sk_live_…` (never prefix with `VITE_` and never commit it).
    - `STRIPE_PRICE_30_MINUTE_APPEARANCE`, `STRIPE_PRICE_1_HOUR_PARTY`, `STRIPE_PRICE_2_HOUR_PARTY` — Stripe **Price** IDs (`price_…`) from `npm run stripe:sync-deposits` (see below). When these are set, Checkout uses your Stripe **Products** catalogue; if omitted, Checkout still works using inline `price_data` for the same GBP amounts.
-   - `STRIPE_ALLOWED_FRONTEND_ORIGINS` (optional) — comma-separated exact origins, e.g. `https://www.princessdream.co.uk,https://princessdream.co.uk`. **If unset**, any **HTTPS** origin is allowed (so www vs apex works). **If set**, only those origins can start checkout — include every URL you use (with and without `www`).
+   - `STRIPE_ALLOWED_FRONTEND_ORIGINS` (optional) — comma-separated **extra** exact origins to allow (e.g. a staging URL or alternate domain). **Any HTTPS origin** on a normal browser request is already allowed for `/api/*`; this variable adds more rather than replacing that rule. `create-checkout-session` still requires `returnOrigin` to match the request origin.
    - `VITE_STRIPE_CHECKOUT_ENDPOINT` (optional) — only if the Checkout API is on a **different** origin than the website. If set, it must be the **full** URL including `/api/create-checkout-session` (not just your homepage URL). Same-domain Vercel deploys can omit it (the app uses `/api/create-checkout-session` on the current host).
 3. **Create deposit products in Stripe (one-time):** from the repo root, with `STRIPE_SECRET_KEY` in `.env.local`:
 
