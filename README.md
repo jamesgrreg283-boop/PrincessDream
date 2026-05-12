@@ -134,7 +134,9 @@ If you see **“Stripe price … must be GBP one-time for X pence”** (or the f
 
 ### Booking confirmation emails (Resend)
 
-After Stripe marks a payment **paid**, `api/stripe-webhook.mjs` confirms the row and calls Resend. **Vercel must have** `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (verified in Resend), and optionally `ADMIN_BOOKING_EMAIL` — values in `.env.local` only apply on your PC, not production. Add the same variables in **Vercel → Project → Settings → Environment Variables**, redeploy, then check **Vercel → Logs** for `stripe-webhook` after a test payment: you should see either `Booking confirmation emails sent` or a clear skip/Resend error. In Stripe Dashboard, the webhook endpoint must be `https://<your-domain>/api/stripe-webhook` and include event `checkout.session.completed`.
+After Stripe marks a payment **paid**, `api/stripe-webhook.mjs` confirms the row and calls Resend. **Vercel must have** `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (verified in Resend), and optionally `ADMIN_BOOKING_EMAIL` — values in `.env.local` only apply on your PC, not production. Add the same variables in **Vercel → Project → Settings → Environment Variables**, redeploy, then check **Vercel → Logs** for `stripe-webhook` after a test payment: you should see either `Booking confirmation emails sent` or a clear skip/Resend error.
+
+In Stripe (Workbench → Webhooks / event destination), the endpoint URL must be the **API path**, not the homepage: **`https://<your-domain>/api/stripe-webhook`** (include `/api/stripe-webhook`). `https://<your-domain>` alone will not hit your handler. Include events **`checkout.session.completed`** and **`checkout.session.expired`**, and set **`STRIPE_WEBHOOK_SECRET`** on Vercel to this destination’s signing secret (`whsec_…`), same Test/Live mode as your Stripe keys.
 
 ### Dev mode
 
