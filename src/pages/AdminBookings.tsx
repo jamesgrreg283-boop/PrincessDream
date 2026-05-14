@@ -47,7 +47,9 @@ type BookingRow = {
 type BlockRow = {
   id: string;
   party_date: string;
+  party_end_date: string | null;
   party_start_time: string;
+  party_end_time: string | null;
   notes: string | null;
   created_at: string;
 };
@@ -107,10 +109,13 @@ export default function AdminBookings() {
   const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({});
   const [blockForm, setBlockForm] = useState({
     partyDate: "",
+    partyEndDate: "",
     partyTime: "",
+    partyEndTime: "",
     notes: "",
   });
   const [blockMsg, setBlockMsg] = useState<string | null>(null);
+  const [bookingDeleteConfirmId, setBookingDeleteConfirmId] = useState<string | null>(null);
 
   const characterOptions = useMemo(
     () => [
@@ -289,6 +294,24 @@ export default function AdminBookings() {
     }
   };
 
+  const deleteBooking = async (id: string) => {
+    try {
+      const r = await fetch(`${origin()}/api/bookings?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        ...fetchOpts,
+      });
+      if (!r.ok) {
+        const j = (await r.json().catch(() => ({}))) as { error?: string };
+        window.alert(j.error || `Delete failed (${r.status})`);
+        return;
+      }
+      setBookingDeleteConfirmId(null);
+      void loadAll();
+    } catch {
+      window.alert("Network error");
+    }
+  };
+
   const addBlock = async (ev: React.FormEvent) => {
     ev.preventDefault();
     setBlockMsg(null);
@@ -299,7 +322,9 @@ export default function AdminBookings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           partyDate: blockForm.partyDate,
+          partyEndDate: blockForm.partyEndDate.trim() || undefined,
           partyTime: blockForm.partyTime,
+          partyEndTime: blockForm.partyEndTime.trim() || undefined,
           notes: blockForm.notes || undefined,
         }),
       });
@@ -308,8 +333,8 @@ export default function AdminBookings() {
         setBlockMsg(j.error || `Could not block (${r.status})`);
         return;
       }
-      setBlockMsg("Slot blocked on the public form.");
-      setBlockForm({ partyDate: "", partyTime: "", notes: "" });
+      setBlockMsg("Block saved — public form will hide those slots.");
+      setBlockForm({ partyDate: "", partyEndDate: "", partyTime: "", partyEndTime: "", notes: "" });
       void loadAll();
     } catch {
       setBlockMsg("Network error.");
@@ -473,6 +498,35 @@ export default function AdminBookings() {
                           Resend emails
                         </button>
                       )}
+                      {bookingDeleteConfirmId === b.id ? (
+                        <div className="mt-2 pt-2 border-t border-pinkSoft/50 space-y-1">
+                          <p className="text-xs text-amber-900 font-medium">Delete this booking?</p>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="text-xs font-semibold text-red-700 underline"
+                              onClick={() => void deleteBooking(b.id)}
+                            >
+                              Confirm delete
+                            </button>
+                            <button
+                              type="button"
+                              className="text-xs text-inkSoft underline"
+                              onClick={() => setBookingDeleteConfirmId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="block text-xs text-red-700/90 underline mt-1"
+                          onClick={() => setBookingDeleteConfirmId(b.id)}
+                        >
+                          Delete booking
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -487,21 +541,35 @@ export default function AdminBookings() {
         <div className="container-px max-w-6xl mx-auto">
           <h2 className="heading-display text-xl mb-3">Blocked slots</h2>
           <p className="text-sm text-inkSoft mb-4 max-w-2xl">
-            Blocks appear on the public booking form as unavailable times (same as a confirmed
-            booking). Remove a block when the slot should open again.
+            Block time ranges on one day, or the same times across multiple days (e.g. holidays).
+            The public booking form treats blocked slots like booked times. Remove a block when it
+            should open again.
           </p>
           <div className="grid lg:grid-cols-2 gap-8">
             <form onSubmit={addBlock} className="card-magical p-6 space-y-3 max-w-md">
               <h3 className="font-display text-lg">Add block</h3>
               {blockMsg && <p className="text-sm text-pinkDeep">{blockMsg}</p>}
               <div>
-                <label className="block text-xs font-medium text-inkSoft mb-1">Date</label>
+                <label className="block text-xs font-medium text-inkSoft mb-1">Start date</label>
                 <input
                   type="date"
                   required
                   className="input-magical"
                   value={blockForm.partyDate}
                   onChange={(e) => setBlockForm((f) => ({ ...f, partyDate: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-inkSoft mb-1">
+                  End date{" "}
+                  <span className="font-normal">(optional — same as start for one day)</span>
+                </label>
+                <input
+                  type="date"
+                  className="input-magical"
+                  min={blockForm.partyDate || undefined}
+                  value={blockForm.partyEndDate}
+                  onChange={(e) => setBlockForm((f) => ({ ...f, partyEndDate: e.target.value }))}
                 />
               </div>
               <div>
@@ -521,16 +589,34 @@ export default function AdminBookings() {
                 </select>
               </div>
               <div>
+                <label className="block text-xs font-medium text-inkSoft mb-1">
+                  End time{" "}
+                  <span className="font-normal">(optional — same as start for one slot)</span>
+                </label>
+                <select
+                  className="input-magical"
+                  value={blockForm.partyEndTime}
+                  onChange={(e) => setBlockForm((f) => ({ ...f, partyEndTime: e.target.value }))}
+                >
+                  <option value="">Same as start (single slot)</option>
+                  {PARTY_START_TIMES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-inkSoft mb-1">Note (optional)</label>
                 <input
                   className="input-magical"
-                  placeholder="e.g. Instagram hold"
+                  placeholder="e.g. Summer holiday / Instagram hold"
                   value={blockForm.notes}
                   onChange={(e) => setBlockForm((f) => ({ ...f, notes: e.target.value }))}
                 />
               </div>
               <button type="submit" className="btn-secondary">
-                Block slot
+                Save block
               </button>
             </form>
 
@@ -539,8 +625,10 @@ export default function AdminBookings() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-pinkSoft text-inkSoft text-left">
-                    <th className="py-2 pr-2">Date</th>
-                    <th className="py-2 pr-2">Time</th>
+                    <th className="py-2 pr-2">Start date</th>
+                    <th className="py-2 pr-2">End date</th>
+                    <th className="py-2 pr-2">Start</th>
+                    <th className="py-2 pr-2">End</th>
                     <th className="py-2 pr-2">Note</th>
                     <th className="py-2 pr-2" />
                   </tr>
@@ -548,9 +636,13 @@ export default function AdminBookings() {
                 <tbody>
                   {(blocks ?? []).map((bl) => (
                     <tr key={bl.id} className="border-b border-pinkSoft/50">
-                      <td className="py-2 pr-2">{bl.party_date}</td>
-                      <td className="py-2 pr-2">{bl.party_start_time}</td>
-                      <td className="py-2 pr-2 text-inkSoft text-xs">{bl.notes ?? "—"}</td>
+                      <td className="py-2 pr-2 whitespace-nowrap">{bl.party_date}</td>
+                      <td className="py-2 pr-2 whitespace-nowrap">{bl.party_end_date ?? "—"}</td>
+                      <td className="py-2 pr-2 whitespace-nowrap">{bl.party_start_time}</td>
+                      <td className="py-2 pr-2 whitespace-nowrap">{bl.party_end_time ?? "—"}</td>
+                      <td className="py-2 pr-2 text-inkSoft text-xs max-w-[10rem]">
+                        {bl.notes ?? "—"}
+                      </td>
                       <td className="py-2 pr-2">
                         <button
                           type="button"

@@ -6,7 +6,11 @@ import {
   handleOptionsCredentials,
   isAllowedFrontendOrigin,
 } from "./_lib/cors.mjs";
-import { isValidPartyDate, isValidPartyTime } from "./_lib/availability.mjs";
+import {
+  isValidPartyDate,
+  isValidPartyTime,
+  partyTimeToMinutes,
+} from "./_lib/availability.mjs";
 
 function parseBody(req) {
   const b = req.body;
@@ -64,27 +68,51 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     const body = parseBody(req);
     const partyDate = String(body?.partyDate ?? body?.party_date ?? "").trim();
+    const partyEndDateRaw = String(
+      body?.partyEndDate ?? body?.party_end_date ?? ""
+    ).trim();
     const partyTime = String(body?.partyTime ?? body?.party_start_time ?? "").trim();
+    const partyEndTimeRaw = String(
+      body?.partyEndTime ?? body?.party_end_time ?? ""
+    ).trim();
     const notes = body?.notes != null ? String(body.notes).trim() : null;
 
     if (!isValidPartyDate(partyDate) || !isValidPartyTime(partyTime)) {
-      return res.status(400).json({ error: "Invalid date or time" });
+      return res.status(400).json({ error: "Invalid start date or start time" });
     }
+
+    const partyEndDate =
+      partyEndDateRaw && isValidPartyDate(partyEndDateRaw) ? partyEndDateRaw : null;
+    if (partyEndDate && partyEndDate < partyDate) {
+      return res.status(400).json({ error: "End date must be on or after start date" });
+    }
+
+    let partyEndTime = null;
+    if (partyEndTimeRaw) {
+      if (!isValidPartyTime(partyEndTimeRaw)) {
+        return res.status(400).json({ error: "Invalid end time" });
+      }
+      partyEndTime = partyEndTimeRaw;
+      if (partyTimeToMinutes(partyEndTime) < partyTimeToMinutes(partyTime)) {
+        return res.status(400).json({ error: "End time must be on or after start time" });
+      }
+    }
+
+    const insertRow = {
+      party_date: partyDate,
+      party_end_date: partyEndDate && partyEndDate !== partyDate ? partyEndDate : null,
+      party_start_time: partyTime,
+      party_end_time: partyEndTime,
+      notes: notes || null,
+    };
 
     const { data: inserted, error: insErr } = await supabase
       .from("blocked_slots")
-      .insert({
-        party_date: partyDate,
-        party_start_time: partyTime,
-        notes: notes || null,
-      })
+      .insert(insertRow)
       .select("*")
       .single();
 
     if (insErr) {
-      if (insErr.code === "23505") {
-        return res.status(409).json({ error: "That slot is already blocked." });
-      }
       console.error(insErr);
       return res.status(500).json({ error: "Could not create block" });
     }

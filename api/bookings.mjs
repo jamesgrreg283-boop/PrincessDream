@@ -162,5 +162,21 @@ export default async function handler(req, res) {
     return res.status(200).json({ booking: updated });
   }
 
+  if (req.method === "DELETE") {
+    const id = String(req.query?.id ?? "").trim();
+    if (!id) {
+      return res.status(400).json({ error: "Missing id" });
+    }
+
+    const { error: delErr } = await supabase.from("bookings").delete().eq("id", id);
+
+    if (delErr) {
+      console.error(delErr);
+      return res.status(500).json({ error: "Could not delete booking" });
+    }
+
+    return res.status(200).json({ ok: true });
+  }
+
   return res.status(405).json({ error: "Method not allowed" });
 }

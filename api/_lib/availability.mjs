@@ -68,18 +68,66 @@ export async function fetchBookingsForDate(supabase, partyDate) {
   return data ?? [];
 }
 
-/** Admin blocks (e.g. Instagram holds) — table optional until migration applied. */
+/** True if this block row covers `calendarDate` (YYYY-MM-DD). */
+export function blockRowCoversCalendarDate(row, calendarDate) {
+  const startD = String(row.party_date ?? "");
+  const endD = String(row.party_end_date ?? row.party_date ?? startD);
+  return calendarDate >= startD && calendarDate <= endD;
+}
+
+/**
+ * Party grid start times (HH:MM) blocked by one row on a given calendar day.
+ * Empty if the row does not apply to that day.
+ */
+export function blockedStartTimesForRowOnDate(row, calendarDate) {
+  if (!blockRowCoversCalendarDate(row, calendarDate)) return [];
+  if (!isValidPartyTime(row.party_start_time)) return [];
+  const startM = partyTimeToMinutes(row.party_start_time);
+  const endT = row.party_end_time;
+  const multiDay =
+    row.party_end_date != null && String(row.party_end_date) > String(row.party_date);
+
+  if ((!endT || !isValidPartyTime(endT) || endT === row.party_start_time) && multiDay) {
+    const endM = partyTimeToMinutes("16:00");
+    const out = [];
+    for (const t of PARTY_GRID_TIMES) {
+      const m = partyTimeToMinutes(t);
+      if (m >= startM && m <= endM) out.push(t);
+    }
+    return out;
+  }
+  if (!endT || !isValidPartyTime(endT) || endT === row.party_start_time) {
+    return [row.party_start_time];
+  }
+  const endM = partyTimeToMinutes(endT);
+  if (endM < startM) return [];
+  const out = [];
+  for (const t of PARTY_GRID_TIMES) {
+    const m = partyTimeToMinutes(t);
+    if (m >= startM && m <= endM) out.push(t);
+  }
+  return out;
+}
+
+/** Admin blocks (holidays / holds) — optional table until migration applied. */
 export async function fetchBlockedTimesForDate(supabase, partyDate) {
   const { data, error } = await supabase
     .from("blocked_slots")
-    .select("party_start_time")
-    .eq("party_date", partyDate);
+    .select("party_date, party_end_date, party_start_time, party_end_time")
+    .limit(2000);
 
   if (error) {
     console.warn("blocked_slots query:", error.message || error);
     return [];
   }
-  return (data ?? []).map((r) => r.party_start_time);
+
+  const set = new Set();
+  for (const r of data ?? []) {
+    for (const t of blockedStartTimesForRowOnDate(r, partyDate)) {
+      set.add(t);
+    }
+  }
+  return [...set];
 }
 
 function blockingRows(rows, now = new Date()) {
