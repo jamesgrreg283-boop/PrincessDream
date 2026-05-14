@@ -142,6 +142,10 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: false, reason: "cancelled" });
   }
 
+  if (row.status !== "confirmed") {
+    return res.status(200).json({ ok: false, reason: "not_confirmed", status: row.status });
+  }
+
   if (row.confirmation_emails_sent_at) {
     return res.status(200).json({ ok: true, alreadySent: true });
   }
