@@ -37,6 +37,29 @@ function safeReplyTo(email) {
   return t;
 }
 
+/**
+ * Absolute base (https, no trailing slash) where `/email/princessdream-logo.png` is served.
+ * Defaults: BOOKING_EMAIL_ASSETS_BASE_URL → Vercel preview host → production www.
+ */
+function emailPublicAssetsBase() {
+  const configured = process.env.BOOKING_EMAIL_ASSETS_BASE_URL?.trim();
+  if (configured) {
+    return configured
+      .replace(/\/$/, "")
+      .replace(/^http:\/\//i, "https://");
+  }
+  const v = process.env.VERCEL_URL?.trim();
+  if (v) {
+    const host = v.replace(/^https?:\/\//i, "");
+    return `https://${host}`;
+  }
+  return "https://aprincessdream.co.uk";
+}
+
+function customerConfirmationLogoUrl() {
+  return `${emailPublicAssetsBase()}/email/princessdream-logo.png`;
+}
+
 /** After both Resend calls succeed, callers persist this so backup routes skip duplicates. */
 export async function markBookingConfirmationEmailsSent(supabase, bookingId) {
   const { error } = await supabase
@@ -181,24 +204,108 @@ function formatAdminNotificationHtml(booking) {
 }
 
 function formatCustomerConfirmationHtml(booking) {
+  const contact = primaryContactEmail();
   const name = esc(booking?.parent_name || "there");
-  const inner = `
-  <p style="margin:0 0 12px;font-size:17px">Hi ${name},</p>
-  <p style="margin:0 0 18px">Thank you — your deposit payment was received and your booking is <strong style="color:#9d174d">confirmed</strong>.</p>
-  <p style="margin:0 0 14px;font-weight:600;color:#5b3d52">Your party details</p>
-  ${formatBookingDetailsTable(booking)}
-  <p style="margin:22px 0 0">The remaining balance above is due in <strong>cash on the day</strong> of the party.</p>
-  <p style="margin:14px 0 0">If anything needs to change, reply to this email or call us on <strong>${esc(SUPPORT_PHONE)}</strong>.</p>
-  <p style="margin:22px 0 0;font-family:Georgia,serif;font-size:16px;color:#9d174d">With love,<br/>PrincessDream ✨</p>`;
+  const child = esc(booking?.child_name || "your little star");
+  const pdate = esc(escPlain(booking?.party_date) || "your party date");
+  const ptimeRaw = escPlain(booking?.party_start_time) || "";
+  const princess = esc(
+    characterLabel(booking?.selected_character) || "your chosen princess"
+  );
+  const logoUrl = esc(customerConfirmationLogoUrl());
 
-  const pdate = escPlain(booking?.party_date) || "your party date";
-  const child = escPlain(booking?.child_name) || "your child";
+  const preheader = `You're booked! ${escPlain(booking?.party_date) || "your party date"}${ptimeRaw ? ` · ${ptimeRaw}` : ""} — we can't wait to celebrate with ${escPlain(booking?.child_name) || "you"}!`;
 
-  return wrapEmailHtml({
-    title: "Your booking is confirmed",
-    preheader: `You're booked for ${pdate}. We can't wait to celebrate with ${child}!`,
-    innerHtml: inner,
-  });
+  const detailsCard = `
+  <div style="background:#fffaf7;border-radius:18px;border:1px solid #f5cfe0;padding:22px 18px 18px;margin:0 0 26px;box-shadow:0 6px 28px rgba(106,27,154,0.07)">
+    <p style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:700;color:#6a1b9a;text-align:center">Your party details</p>
+    <p style="margin:0 0 16px;text-align:center;font-size:13px;color:#8e5a7a;line-height:1.5">Everything looks magical so far — give this a quick read and let us know if anything needs a sprinkle of change.</p>
+    ${formatBookingDetailsTable(booking)}
+  </div>`;
+
+  const balanceCallout = `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 26px;border-collapse:separate;border-spacing:0">
+    <tr>
+      <td style="background:linear-gradient(135deg,#fff9f0 0%,#fff3e0 100%);border-radius:14px;border-left:4px solid #c9a227;padding:16px 18px;font-size:14px;line-height:1.55;color:#4a3544">
+        <strong style="color:#8d6e15">Balance on the day:</strong> the amount shown above is due in <strong>cash</strong> when your princess arrives — easy and stress-free.
+      </td>
+    </tr>
+  </table>`;
+
+  const whatsNext = `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;border-collapse:separate;border-spacing:0">
+    <tr>
+      <td style="padding:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:700;color:#ad1457;text-align:center">What happens next?</td>
+    </tr>
+    <tr>
+      <td>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:0 10px">
+          <tr>
+            <td style="width:40px;vertical-align:top;text-align:center;font-size:18px;color:#c9a227">&#9733;</td>
+            <td style="vertical-align:top;font-size:14px;line-height:1.5;color:#4a3544"><strong style="color:#6a1b9a">We&apos;re on it.</strong> Keep this email as your confirmation — we may reach out if we need any tiny final details.</td>
+          </tr>
+          <tr>
+            <td style="width:40px;vertical-align:top;text-align:center;font-size:18px;color:#c9a227">&#9733;</td>
+            <td style="vertical-align:top;font-size:14px;line-height:1.5;color:#4a3544"><strong style="color:#6a1b9a">Before the big day.</strong> We&apos;ll send a friendly reminder so the excitement stays high and nothing is left to chance.</td>
+          </tr>
+          <tr>
+            <td style="width:40px;vertical-align:top;text-align:center;font-size:18px;color:#c9a227">&#9733;</td>
+            <td style="vertical-align:top;font-size:14px;line-height:1.5;color:#4a3544"><strong style="color:#6a1b9a">Showtime!</strong> ${child} and ${princess} will be ready for a celebration to remember.</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${esc("Your PrincessDream booking is confirmed")}</title>
+</head>
+<body style="margin:0;padding:0;background:linear-gradient(180deg,#fdf2f8 0%,#fce7f3 35%,#fae8ff 100%);">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all">${esc(preheader)}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:28px 12px 40px">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 20px 50px rgba(106,27,154,0.12),0 0 0 1px rgba(233,30,99,0.06)">
+          <tr>
+            <td style="background:linear-gradient(165deg,#fce4ec 0%,#f8bbd9 40%,#e1bee7 100%);padding:28px 20px 22px;text-align:center;border-bottom:1px solid rgba(201,168,39,0.35)">
+              <p style="margin:0 0 10px;font-size:13px;letter-spacing:0.28em;text-transform:uppercase;color:#7b1fa2;font-weight:700">Magical parties they&apos;ll never forget</p>
+              <img src="${logoUrl}" alt="Princess Dream Parties" width="260" style="display:block;margin:0 auto;max-width:88%;height:auto;border:0" />
+              <p style="margin:14px 0 0;font-size:15px;color:#880e4f;letter-spacing:0.12em">&#9733; &nbsp;&#10022;&nbsp; &#9733;</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:30px 26px 8px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2A1B2D;font-size:15px;line-height:1.6">
+              <p style="margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;color:#c2185b;line-height:1.25">You&apos;re officially booked!</p>
+              <p style="margin:0 0 18px;font-size:16px;color:#5b3d52">Hi ${name},</p>
+              <p style="margin:0 0 16px">Your deposit just landed with a little <strong style="color:#c2185b">sparkle</strong> — your party is <strong style="color:#6a1b9a">confirmed</strong>. We are so excited to help make ${child}&apos;s day unforgettable.</p>
+              <p style="margin:0 0 22px;padding:12px 16px;background:#fce4ec;border-radius:12px;font-size:14px;color:#4a3544;text-align:center;border:1px dashed #f48fb1">
+                <span style="font-size:18px;vertical-align:middle;color:#c9a227">&#9733;</span>
+                &nbsp; <strong>${pdate}</strong>${ptimeRaw ? ` &nbsp;&middot;&nbsp; <strong>${esc(ptimeRaw)}</strong>` : ""} &nbsp; <span style="color:#7b1fa2">·</span> &nbsp; <strong>${princess}</strong>
+              </p>
+              ${detailsCard}
+              ${balanceCallout}
+              ${whatsNext}
+              <p style="margin:0 0 12px">Questions, tweaks, or happy dances? Reply to this email or call us on <a href="tel:${esc(SUPPORT_PHONE_TEL)}" style="color:#c2185b;font-weight:700;text-decoration:none">${esc(SUPPORT_PHONE)}</a>.</p>
+              <p style="margin:22px 0 0;padding-top:18px;border-top:1px solid #f3e5f5;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#7b1fa2;text-align:center">With sparkle and love,<br/><span style="color:#e91e63">The PrincessDream Team</span> &#10024;</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 22px 26px;text-align:center;font-size:12px;color:#88627a;line-height:1.6">
+              <a href="mailto:${esc(contact)}" style="color:#ad1457;font-weight:600">${esc(contact)}</a>
+              <span style="color:#ccc">&nbsp;&middot;&nbsp;</span>
+              Coventry &amp; surrounding areas
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 function formatAdminNotificationText(booking) {
@@ -222,20 +329,25 @@ function formatAdminNotificationText(booking) {
 
 function formatCustomerConfirmationText(booking) {
   const pn = escPlain(booking?.parent_name) || "there";
+  const base = emailPublicAssetsBase();
   return [
     `Hi ${pn},`,
     "",
-    "Thank you — your deposit was received and your booking is CONFIRMED.",
+    "You're officially booked with Princess Dream Parties — your deposit was received and your booking is CONFIRMED!",
+    "",
+    "Magical parties they'll never forget.",
     "",
     formatBookingDetailsPlain(booking),
     "",
     "The remaining balance is due in cash on the day of the party.",
     "If anything needs to change, reply to this email or call us.",
     "",
-    "— PrincessDream",
+    "With sparkle and love,",
+    "The PrincessDream Team",
     "",
     `Phone: ${SUPPORT_PHONE}`,
     `Email: ${primaryContactEmail()}`,
+    `Logo & updates: ${base}`,
   ].join("\n");
 }
 
@@ -375,8 +487,10 @@ export async function sendBookingConfirmationEmails(booking) {
       `Resend: admin→${adminInbox}, customer→${customerTo || "(skipped)"}, from=${from}. Fix domain verification or API key in Resend dashboard.`
     );
   } else {
+    const adminId = toAdmin?.data?.id ?? toAdmin?.data?.Id ?? null;
+    const custId = toCustomer?.data?.id ?? toCustomer?.data?.Id ?? null;
     console.log(
-      `Booking confirmation emails sent (admin ${adminInbox}, customer ${customerTo})`
+      `Booking confirmation emails sent (booking=${booking?.id || "?"}): admin id=${adminId ?? "n/a"} → ${adminInbox}; customer id=${custId ?? "n/a"} → ${customerTo || "n/a"}`
     );
   }
 
