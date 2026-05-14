@@ -1,7 +1,10 @@
 import Stripe from "stripe";
 import getRawBody from "raw-body";
 import { getSupabaseAdmin } from "./_lib/supabase.mjs";
-import { sendBookingConfirmationEmails } from "./_lib/emails.mjs";
+import {
+  markBookingConfirmationEmailsSent,
+  sendBookingConfirmationEmails,
+} from "./_lib/emails.mjs";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -95,6 +98,13 @@ export default async function handler(req, res) {
           }
           if (mailResult?.errors?.length) {
             console.error("Confirmation emails partial failure:", mailResult.errors);
+          }
+          if (
+            !mailResult?.skipped &&
+            !mailResult?.errors?.length &&
+            updated?.id
+          ) {
+            await markBookingConfirmationEmailsSent(supabase, updated.id);
           }
         } catch (mailErr) {
           console.error("Confirmation email error:", mailErr);

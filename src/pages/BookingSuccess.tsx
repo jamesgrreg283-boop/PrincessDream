@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import SEO from "../components/SEO";
@@ -14,6 +14,7 @@ export default function BookingSuccess() {
     stripeSession ? "unknown" : "confirmed"
   );
   const [slowPoll, setSlowPoll] = useState(false);
+  const ensureEmailsOnce = useRef(false);
 
   useEffect(() => {
     if (!stripeSession) return;
@@ -56,6 +57,21 @@ export default function BookingSuccess() {
       cancelled = true;
     };
   }, [stripeSession]);
+
+  useEffect(() => {
+    if (!stripeSession || recordStatus !== "confirmed" || ensureEmailsOnce.current) {
+      return;
+    }
+    ensureEmailsOnce.current = true;
+    const origin = window.location.origin;
+    void fetch(`${origin}/api/ensure-booking-emails`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: stripeSession }),
+    }).catch(() => {
+      /* non-blocking backup if Stripe webhook was delayed or Resend failed once */
+    });
+  }, [stripeSession, recordStatus]);
 
   return (
     <>

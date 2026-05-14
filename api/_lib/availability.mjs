@@ -111,10 +111,8 @@ export function blockedStartTimesForRowOnDate(row, calendarDate) {
 
 /** Admin blocks (holidays / holds) — optional table until migration applied. */
 export async function fetchBlockedTimesForDate(supabase, partyDate) {
-  const { data, error } = await supabase
-    .from("blocked_slots")
-    .select("party_date, party_end_date, party_start_time, party_end_time")
-    .limit(2000);
+  // Use * so older DBs without party_end_date / party_end_time (migration not applied) still work.
+  const { data, error } = await supabase.from("blocked_slots").select("*").limit(2000);
 
   if (error) {
     console.warn("blocked_slots query:", error.message || error);
