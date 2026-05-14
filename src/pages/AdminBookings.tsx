@@ -22,6 +22,31 @@ const PARTY_START_TIMES: { value: string; label: string }[] = (() => {
   return opts;
 })();
 
+/** Matches server “full bookable day” block (9am–4pm grid). */
+const BLOCK_WHOLE_DAY_START = "09:00";
+const BLOCK_WHOLE_DAY_END = "16:00";
+
+function blockIsWholeDay(bl: BlockRow): boolean {
+  return (
+    bl.party_start_time === BLOCK_WHOLE_DAY_START && bl.party_end_time === BLOCK_WHOLE_DAY_END
+  );
+}
+
+function formatBlockWhen(bl: BlockRow): string {
+  if (bl.party_end_date && bl.party_end_date !== bl.party_date) {
+    return `${bl.party_date} → ${bl.party_end_date}`;
+  }
+  return bl.party_date;
+}
+
+function formatBlockCoverage(bl: BlockRow): string {
+  if (blockIsWholeDay(bl)) return "Whole day (unbookable)";
+  if (!bl.party_end_time || bl.party_end_time === bl.party_start_time) {
+    return `${bl.party_start_time} only`;
+  }
+  return `${bl.party_start_time} – ${bl.party_end_time}`;
+}
+
 type BookingRow = {
   id: string;
   parent_name: string;
@@ -113,6 +138,7 @@ export default function AdminBookings() {
     partyTime: "",
     partyEndTime: "",
     notes: "",
+    wholeDays: true,
   });
   const [blockMsg, setBlockMsg] = useState<string | null>(null);
   const [bookingDeleteConfirmId, setBookingDeleteConfirmId] = useState<string | null>(null);
@@ -315,6 +341,20 @@ export default function AdminBookings() {
   const addBlock = async (ev: React.FormEvent) => {
     ev.preventDefault();
     setBlockMsg(null);
+    const whole = blockForm.wholeDays;
+    let partyTime: string;
+    let partyEndTime: string | undefined;
+    if (whole) {
+      partyTime = BLOCK_WHOLE_DAY_START;
+      partyEndTime = BLOCK_WHOLE_DAY_END;
+    } else {
+      partyTime = blockForm.partyTime;
+      if (!partyTime) {
+        setBlockMsg("Choose a start time, or turn on “Block whole days”.");
+        return;
+      }
+      partyEndTime = blockForm.partyEndTime.trim() || undefined;
+    }
     try {
       const r = await fetch(`${origin()}/api/blocked-slots`, {
         method: "POST",
@@ -323,8 +363,8 @@ export default function AdminBookings() {
         body: JSON.stringify({
           partyDate: blockForm.partyDate,
           partyEndDate: blockForm.partyEndDate.trim() || undefined,
-          partyTime: blockForm.partyTime,
-          partyEndTime: blockForm.partyEndTime.trim() || undefined,
+          partyTime,
+          partyEndTime,
           notes: blockForm.notes || undefined,
         }),
       });
@@ -333,8 +373,15 @@ export default function AdminBookings() {
         setBlockMsg(j.error || `Could not block (${r.status})`);
         return;
       }
-      setBlockMsg("Block saved — public form will hide those slots.");
-      setBlockForm({ partyDate: "", partyEndDate: "", partyTime: "", partyEndTime: "", notes: "" });
+      setBlockMsg("Saved. Those dates/times are hidden on the public booking form.");
+      setBlockForm({
+        partyDate: "",
+        partyEndDate: "",
+        partyTime: "",
+        partyEndTime: "",
+        notes: "",
+        wholeDays: true,
+      });
       void loadAll();
     } catch {
       setBlockMsg("Network error.");
@@ -418,7 +465,7 @@ export default function AdminBookings() {
       <PageHeader
         eyebrow="Staff"
         title="Bookings"
-        subtitle="View bookings, update status, add manual entries, and block slots for social enquiries."
+        subtitle="View bookings, update status, add manual entries, and block dates on the public calendar."
       />
 
       <section className="section-pad bg-white space-y-12 pb-24">
@@ -539,18 +586,38 @@ export default function AdminBookings() {
         </div>
 
         <div className="container-px max-w-6xl mx-auto">
-          <h2 className="heading-display text-xl mb-3">Blocked slots</h2>
-          <p className="text-sm text-inkSoft mb-4 max-w-2xl">
-            Block time ranges on one day, or the same times across multiple days (e.g. holidays).
-            The public booking form treats blocked slots like booked times. Remove a block when it
-            should open again.
+          <h2 className="heading-display text-xl mb-3">Block dates on the public form</h2>
+          <p className="text-sm text-inkSoft mb-4 max-w-xl">
+            <strong className="text-ink">Whole days</strong> is the default: pick the first day, optionally
+            a last day for a holiday week, and save — no times needed. Turn it off only if you need to
+            block part of a day (e.g. one afternoon).
           </p>
           <div className="grid lg:grid-cols-2 gap-8">
-            <form onSubmit={addBlock} className="card-magical p-6 space-y-3 max-w-md">
-              <h3 className="font-display text-lg">Add block</h3>
+            <form onSubmit={addBlock} className="card-magical p-6 space-y-4 max-w-md">
+              <h3 className="font-display text-lg">Add a block</h3>
               {blockMsg && <p className="text-sm text-pinkDeep">{blockMsg}</p>}
+
+              <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-pinkSoft/80 bg-pinkSoft/10 p-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 w-4 h-4 rounded border-pinkBlush text-pinkDeep"
+                  checked={blockForm.wholeDays}
+                  onChange={(e) =>
+                    setBlockForm((f) => ({
+                      ...f,
+                      wholeDays: e.target.checked,
+                      ...(e.target.checked ? { partyTime: "", partyEndTime: "" } : {}),
+                    }))
+                  }
+                />
+                <span className="text-sm text-ink leading-snug">
+                  <strong className="font-semibold">Block whole days</strong> — the same hours the
+                  booking form normally offers (9:00 am–4:00 pm) are closed on every day in the range.
+                </span>
+              </label>
+
               <div>
-                <label className="block text-xs font-medium text-inkSoft mb-1">Start date</label>
+                <label className="block text-xs font-medium text-inkSoft mb-1">First day</label>
                 <input
                   type="date"
                   required
@@ -561,8 +628,7 @@ export default function AdminBookings() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-inkSoft mb-1">
-                  End date{" "}
-                  <span className="font-normal">(optional — same as start for one day)</span>
+                  Last day <span className="font-normal text-inkSoft">(leave blank = one day only)</span>
                 </label>
                 <input
                   type="date"
@@ -572,50 +638,56 @@ export default function AdminBookings() {
                   onChange={(e) => setBlockForm((f) => ({ ...f, partyEndDate: e.target.value }))}
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-inkSoft mb-1">Start time</label>
-                <select
-                  required
-                  className="input-magical"
-                  value={blockForm.partyTime}
-                  onChange={(e) => setBlockForm((f) => ({ ...f, partyTime: e.target.value }))}
-                >
-                  <option value="">Select</option>
-                  {PARTY_START_TIMES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-inkSoft mb-1">
-                  End time{" "}
-                  <span className="font-normal">(optional — same as start for one slot)</span>
-                </label>
-                <select
-                  className="input-magical"
-                  value={blockForm.partyEndTime}
-                  onChange={(e) => setBlockForm((f) => ({ ...f, partyEndTime: e.target.value }))}
-                >
-                  <option value="">Same as start (single slot)</option>
-                  {PARTY_START_TIMES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+
+              {!blockForm.wholeDays && (
+                <div className="space-y-3 pt-1 border-t border-pinkSoft/60">
+                  <p className="text-xs text-inkSoft">Part of the day only:</p>
+                  <div>
+                    <label className="block text-xs font-medium text-inkSoft mb-1">From</label>
+                    <select
+                      required={!blockForm.wholeDays}
+                      className="input-magical"
+                      value={blockForm.partyTime}
+                      onChange={(e) => setBlockForm((f) => ({ ...f, partyTime: e.target.value }))}
+                    >
+                      <option value="">Select start</option>
+                      {PARTY_START_TIMES.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-inkSoft mb-1">
+                      To <span className="font-normal">(optional — one slot if empty)</span>
+                    </label>
+                    <select
+                      className="input-magical"
+                      value={blockForm.partyEndTime}
+                      onChange={(e) => setBlockForm((f) => ({ ...f, partyEndTime: e.target.value }))}
+                    >
+                      <option value="">Same as “From”</option>
+                      {PARTY_START_TIMES.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-medium text-inkSoft mb-1">Note (optional)</label>
                 <input
                   className="input-magical"
-                  placeholder="e.g. Summer holiday / Instagram hold"
+                  placeholder="e.g. Summer break"
                   value={blockForm.notes}
                   onChange={(e) => setBlockForm((f) => ({ ...f, notes: e.target.value }))}
                 />
               </div>
-              <button type="submit" className="btn-secondary">
+              <button type="submit" className="btn-secondary w-full sm:w-auto">
                 Save block
               </button>
             </form>
@@ -625,10 +697,8 @@ export default function AdminBookings() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-pinkSoft text-inkSoft text-left">
-                    <th className="py-2 pr-2">Start date</th>
-                    <th className="py-2 pr-2">End date</th>
-                    <th className="py-2 pr-2">Start</th>
-                    <th className="py-2 pr-2">End</th>
+                    <th className="py-2 pr-2">When</th>
+                    <th className="py-2 pr-2">What’s blocked</th>
                     <th className="py-2 pr-2">Note</th>
                     <th className="py-2 pr-2" />
                   </tr>
@@ -636,14 +706,12 @@ export default function AdminBookings() {
                 <tbody>
                   {(blocks ?? []).map((bl) => (
                     <tr key={bl.id} className="border-b border-pinkSoft/50">
-                      <td className="py-2 pr-2 whitespace-nowrap">{bl.party_date}</td>
-                      <td className="py-2 pr-2 whitespace-nowrap">{bl.party_end_date ?? "—"}</td>
-                      <td className="py-2 pr-2 whitespace-nowrap">{bl.party_start_time}</td>
-                      <td className="py-2 pr-2 whitespace-nowrap">{bl.party_end_time ?? "—"}</td>
-                      <td className="py-2 pr-2 text-inkSoft text-xs max-w-[10rem]">
+                      <td className="py-2 pr-2 whitespace-nowrap align-top">{formatBlockWhen(bl)}</td>
+                      <td className="py-2 pr-2 align-top text-ink">{formatBlockCoverage(bl)}</td>
+                      <td className="py-2 pr-2 text-inkSoft text-xs max-w-[12rem] align-top">
                         {bl.notes ?? "—"}
                       </td>
-                      <td className="py-2 pr-2">
+                      <td className="py-2 pr-2 align-top">
                         <button
                           type="button"
                           className="text-xs text-pinkDeep underline"
