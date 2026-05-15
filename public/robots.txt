@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://aprincessdream.co.uk/sitemap.xml
+Sitemap: https://www.princessdream.co.uk/sitemap.xml
