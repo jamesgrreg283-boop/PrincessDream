@@ -1,9 +1,52 @@
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Resend } from "resend";
 import { characterLabel } from "./characters.mjs";
 import { packageBySlug } from "./packages.mjs";
 
 const SUPPORT_PHONE = process.env.BOOKING_SUPPORT_PHONE?.trim() || "07871 796024";
 const SUPPORT_PHONE_TEL = process.env.BOOKING_SUPPORT_PHONE_TEL?.trim() || "+447871796024";
+
+/** Bundled next to this module so confirmation emails work even when `/email/…` is 404 on the site. */
+const __dirnameEmails = dirname(fileURLToPath(import.meta.url));
+const CONFIRMATION_LOGO_PATH = join(__dirnameEmails, "assets", "princessdream-logo.png");
+const CONFIRMATION_LOGO_CID = "apd-confirmation-logo";
+
+/** @type {Buffer | null | undefined} undefined = not yet loaded */
+let confirmationLogoBufferCache;
+
+function getConfirmationLogoBuffer() {
+  if (confirmationLogoBufferCache !== undefined) return confirmationLogoBufferCache;
+  try {
+    if (existsSync(CONFIRMATION_LOGO_PATH)) {
+      confirmationLogoBufferCache = readFileSync(CONFIRMATION_LOGO_PATH);
+      return confirmationLogoBufferCache;
+    }
+  } catch (e) {
+    console.error("Could not read bundled confirmation logo:", e);
+  }
+  confirmationLogoBufferCache = null;
+  return null;
+}
+
+/** @returns {{ filename: string; content: Buffer; contentType: string; contentId: string } | null} */
+function confirmationLogoAttachment() {
+  const buf = getConfirmationLogoBuffer();
+  if (!buf) return null;
+  return {
+    filename: "princessdream-logo.png",
+    content: buf,
+    contentType: "image/png",
+    contentId: CONFIRMATION_LOGO_CID,
+  };
+}
+
+/** `src` value for `<img>` — inline CID when bundled asset exists, else public HTTPS URL. */
+function confirmationLogoImgSrc() {
+  if (getConfirmationLogoBuffer()) return `cid:${CONFIRMATION_LOGO_CID}`;
+  return esc(customerConfirmationLogoUrl());
+}
 
 function primaryContactEmail() {
   return (
@@ -39,7 +82,8 @@ function safeReplyTo(email) {
 
 /**
  * Absolute base (https, no trailing slash) where `/email/princessdream-logo.png` is served.
- * Defaults: BOOKING_EMAIL_ASSETS_BASE_URL → Vercel preview host → production www.
+ * Used only as a fallback when the bundled logo file is missing from the serverless bundle.
+ * Defaults: BOOKING_EMAIL_ASSETS_BASE_URL → Vercel preview host → production host.
  */
 function emailPublicAssetsBase() {
   const configured = process.env.BOOKING_EMAIL_ASSETS_BASE_URL?.trim();
@@ -228,7 +272,7 @@ function formatCustomerConfirmationHtml(booking) {
   const princess = esc(
     characterLabel(booking?.selected_character) || "your chosen princess"
   );
-  const logoUrl = esc(customerConfirmationLogoUrl());
+  const logoSrc = confirmationLogoImgSrc();
 
   const preheader = `You're booked! ${escPlain(booking?.party_date) || "your party date"}${ptimeRaw ? ` · ${ptimeRaw}` : ""} — we can't wait to celebrate with ${escPlain(booking?.child_name) || "you"}!`;
 
@@ -289,7 +333,7 @@ function formatCustomerConfirmationHtml(booking) {
           <tr>
             <td style="background:linear-gradient(165deg,#fce4ec 0%,#f8bbd9 40%,#e1bee7 100%);padding:28px 20px 22px;text-align:center;border-bottom:1px solid rgba(201,168,39,0.35)">
               <p style="margin:0 0 10px;font-size:13px;letter-spacing:0.28em;text-transform:uppercase;color:#7b1fa2;font-weight:700">Magical parties they&apos;ll never forget</p>
-              <img src="${logoUrl}" alt="Princess Dream Parties" width="260" style="display:block;margin:0 auto;max-width:88%;height:auto;border:0" />
+              <img src="${logoSrc}" alt="Princess Dream Parties" width="260" style="display:block;margin:0 auto;max-width:88%;height:auto;border:0" />
               <p style="margin:14px 0 0;font-size:15px;color:#880e4f;letter-spacing:0.12em">&#9733; &nbsp;&#10022;&nbsp; &#9733;</p>
             </td>
           </tr>
@@ -463,6 +507,7 @@ export async function sendBookingConfirmationEmails(booking, options = {}) {
   let customerPayload = null;
   if (customerTo) {
     try {
+      const logoAtt = confirmationLogoAttachment();
       customerPayload = {
         from,
         to: customerTo,
@@ -470,6 +515,7 @@ export async function sendBookingConfirmationEmails(booking, options = {}) {
         subject: customerSubject,
         html: formatCustomerConfirmationHtml(booking),
         text: formatCustomerConfirmationText(booking),
+        ...(logoAtt ? { attachments: [logoAtt] } : {}),
       };
     } catch (e) {
       console.error("Customer booking email render failed:", e);

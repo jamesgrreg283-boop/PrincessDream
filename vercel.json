@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/stripe-webhook.mjs": { "includeFiles": "api/_lib/assets/**" },
+    "api/send-confirmation-email.mjs": { "includeFiles": "api/_lib/assets/**" },
+    "api/ensure-booking-emails.mjs": { "includeFiles": "api/_lib/assets/**" }
+  },
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
     { "source": "/((?!api/|email/).*)", "destination": "/index.html" }
