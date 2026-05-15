@@ -21,8 +21,8 @@ export const SITE = {
 } as const;
 
 export const TRUST_BADGES = [
-  { label: "Fully Insured", icon: "shield" },
   { label: "DBS Checked", icon: "check" },
+  { label: "Safety-focused", icon: "shield" },
   { label: "Professional Performers", icon: "star" },
   { label: "5-Star Experiences", icon: "sparkles" },
 ] as const;

@@ -22,7 +22,7 @@ export const AREAS: Area[] = [
       "We're proud to call Coventry our home. Our magical princess parties travel right across the city — from Earlsdon and Allesley to Cheylesmore, Stoke and Walsgrave — bringing fairytales to life for birthday children across CV1 to CV6.",
     bullets: [
       "Local Coventry-based princess entertainers",
-      "DBS checked and fully insured for your peace of mind",
+      "DBS-checked performers you can trust",
       "Available for home parties, halls, and venue bookings",
       "Free travel within Coventry city limits",
     ],
@@ -64,7 +64,7 @@ export const AREAS: Area[] = [
       "Bedworth families love our magical visits. From Exhall to Collycroft and Bulkington, we deliver warm, professional princess parties that bring joy to children and reassurance to parents across CV12.",
     bullets: [
       "Warwickshire princess entertainer serving Bedworth",
-      "Insured, DBS checked, and child-safety focused",
+      "DBS checked and child-safety focused",
       "Memorable photo moments included",
       "Easy online booking with secure deposit",
     ],

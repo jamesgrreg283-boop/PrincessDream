@@ -54,8 +54,7 @@ export default function Terms() {
           <p>
             The party host is responsible for providing a safe, clean
             performance space. Children must be supervised by parents or
-            guardians at all times. We are fully insured with public liability
-            cover.
+            guardians at all times. All performers are DBS checked.
           </p>
 
           <h2 className="heading-display text-2xl">6. Photography</h2>

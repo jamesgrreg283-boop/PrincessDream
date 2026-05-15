@@ -19,7 +19,7 @@ export const REVIEWS: Review[] = [
     child: "Lily, 5",
     location: "Coventry",
     rating: 5,
-    date: "April 2026",
+    date: "April 2025",
     text:
       "Absolutely magical from start to finish! Elsa was perfect — she sang, she danced, she was so kind with all the children. My daughter said it was the best day of her life.",
     character: "Elsa",
@@ -29,7 +29,7 @@ export const REVIEWS: Review[] = [
     child: "Maisie, 6",
     location: "Leamington Spa",
     rating: 5,
-    date: "March 2026",
+    date: "March 2025",
     text:
       "Our daughter felt like a real princess. The communication beforehand was fantastic and the entertainer was so professional. We will be booking again next year!",
     character: "Belle",
@@ -38,7 +38,7 @@ export const REVIEWS: Review[] = [
     name: "Rachel D.",
     location: "Nuneaton",
     rating: 5,
-    date: "March 2026",
+    date: "September 2025",
     text:
       "Professional, punctual and incredible with children. Worth every penny — every child was engaged from the moment she arrived. Thank you for making the day so special.",
     character: "Rapunzel",
@@ -48,7 +48,7 @@ export const REVIEWS: Review[] = [
     child: "Olivia, 4",
     location: "Bedworth",
     rating: 5,
-    date: "February 2026",
+    date: "November 2025",
     text:
       "Fairy Sparkles was beyond magical. The fairy dust wish moment had us all in tears. Honestly the best party we've ever had — booking was so simple too.",
     character: "Fairy Sparkles",
@@ -58,7 +58,7 @@ export const REVIEWS: Review[] = [
     child: "Freya, 7",
     location: "Kenilworth",
     rating: 5,
-    date: "January 2026",
+    date: "January 2025",
     text:
       "Ariel was wonderful! Stayed in character the whole time, brilliant with all the kids, and the photos are absolutely beautiful. Highly recommended.",
     character: "Ariel",

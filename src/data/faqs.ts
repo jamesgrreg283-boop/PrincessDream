@@ -26,10 +26,6 @@ export const FAQS: Faq[] = [
     a: "Yes — all performers are DBS checked for your peace of mind.",
   },
   {
-    q: "Are you fully insured?",
-    a: "Yes, we are fully insured with public liability cover.",
-  },
-  {
     q: "Can I choose my child's favourite princess?",
     a: "Absolutely! Choose your princess at the time of booking. Bookings are subject to character availability on your chosen date.",
   },

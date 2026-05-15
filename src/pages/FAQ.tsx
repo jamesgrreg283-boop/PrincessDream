@@ -23,7 +23,7 @@ export default function FAQ() {
     <>
       <SEO
         title="FAQ | Princess Parties Coventry | PrincessDream"
-        description="Frequently asked questions about our princess parties — booking, deposits, areas covered, DBS checks, insurance and more."
+        description="Frequently asked questions about our princess parties — booking, deposits, areas covered, DBS checks and more."
         path="/faq"
         schema={schema}
       />

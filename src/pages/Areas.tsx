@@ -11,7 +11,7 @@ export default function Areas() {
     <>
       <SEO
         title="Areas We Cover | Princess Parties Coventry & Warwickshire"
-        description="We bring princess parties to Coventry, Leamington Spa, Bedworth, Nuneaton, Kenilworth and surrounding areas. Professional entertainers, fully insured & DBS checked."
+        description="We bring princess parties to Coventry, Leamington Spa, Bedworth, Nuneaton, Kenilworth and surrounding areas. Professional DBS-checked entertainers."
         path="/areas"
       />
 
