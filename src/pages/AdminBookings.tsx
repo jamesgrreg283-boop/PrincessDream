@@ -297,11 +297,12 @@ export default function AdminBookings() {
     setTestResult(null);
     try {
       const bid = testBookingId.trim();
-      const r = await fetch(`${origin()}/api/admin/send-test-confirmation-email`, {
+      const r = await fetch(`${origin()}/api/send-confirmation-email`, {
         method: "POST",
         ...fetchOpts,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          mode: "test",
           customerEmail: em,
           ...(bid ? { bookingId: bid } : { packageSlug: testPkg }),
           markAsSent: testMarkSent && Boolean(bid),

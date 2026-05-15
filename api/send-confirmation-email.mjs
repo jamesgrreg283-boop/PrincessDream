@@ -1,5 +1,11 @@
 import { assertAdmin } from "./_lib/authAdmin.mjs";
-import { getSupabaseAdmin } from "./_lib/supabase.mjs";
+import {
+  ADMIN_COOKIE_NAME,
+  getCookieValue,
+  verifyAdminPassword,
+  verifySignedSessionToken,
+} from "./_lib/adminSession.mjs";
+import { processAdminTestConfirmationEmail } from "./_lib/adminTestConfirmation.mjs";
 import {
   applyCorsCredentials,
   getRequestOrigin,
@@ -7,6 +13,7 @@ import {
   isAllowedFrontendOrigin,
 } from "./_lib/cors.mjs";
 import { sendBookingConfirmationEmails } from "./_lib/emails.mjs";
+import { getSupabaseAdmin } from "./_lib/supabase.mjs";
 
 function parseBody(req) {
   const b = req.body;
@@ -19,6 +26,15 @@ function parseBody(req) {
     }
   }
   return null;
+}
+
+/** Session cookie or body password (same as admin login). */
+function adminAuthorizedWithPasswordFallback(req, body) {
+  const token = getCookieValue(req, ADMIN_COOKIE_NAME);
+  if (verifySignedSessionToken(token)) return true;
+  const pw = String(body?.password ?? "");
+  if (pw && verifyAdminPassword(pw)) return true;
+  return false;
 }
 
 export default async function handler(req, res) {
@@ -34,13 +50,30 @@ export default async function handler(req, res) {
   }
   applyCorsCredentials(res, origin);
 
+  const body = parseBody(req);
+  if (!body) {
+    return res.status(400).json({ error: "Invalid JSON body" });
+  }
+
+  if (body.mode === "test") {
+    try {
+      if (!adminAuthorizedWithPasswordFallback(req, body)) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+    } catch (e) {
+      console.error("[send-confirmation-email test] auth:", e);
+      return res.status(500).json({ error: e.message || "Auth error" });
+    }
+    const out = await processAdminTestConfirmationEmail(body);
+    return res.status(out.statusCode).json(out.json);
+  }
+
   try {
     assertAdmin(req);
   } catch (e) {
     return res.status(e.statusCode || 401).json({ error: e.message });
   }
 
-  const body = parseBody(req);
   const id = String(body?.bookingId || body?.id || "").trim();
   if (!id) {
     return res.status(400).json({ error: "Missing bookingId" });
