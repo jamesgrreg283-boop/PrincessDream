@@ -9,7 +9,7 @@ export default function StickyMobileCTA() {
   if (pathname.startsWith("/book")) return null;
 
   return (
-    <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 px-4 pb-4 pt-3 bg-gradient-to-t from-white via-white/95 to-white/70 backdrop-blur-md border-t border-pinkSoft">
+    <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 px-4 pt-3 bg-gradient-to-t from-white via-white/95 to-white/70 backdrop-blur-md border-t border-pinkSoft pb-[max(1rem,calc(0.75rem+env(safe-area-inset-bottom,0px)))]">
       <Link
         to="/book"
         className="btn-primary w-full justify-center text-base py-4 shadow-magical"

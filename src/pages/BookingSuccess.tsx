@@ -109,131 +109,49 @@ export default function BookingSuccess() {
         path="/booking-success"
       />
 
-      <section className="relative section-pad overflow-hidden bg-magic-gradient min-h-[62vh]">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-lavender/40" />
-        <Sparkles count={56} variant="gold" className="opacity-50" />
+      <section className="relative overflow-hidden bg-magic-gradient py-10 sm:py-12 lg:py-14">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-lavender/35" />
+        <Sparkles count={40} variant="gold" className="opacity-45" />
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.65 }}
-          className="container-px max-w-2xl mx-auto text-center relative z-10"
+          transition={{ duration: 0.5 }}
+          className="container-px w-full max-w-3xl mx-auto relative z-10 space-y-8 sm:space-y-10"
         >
-          <div className="mx-auto w-24 h-24 rounded-full bg-accent-btn shadow-accent grid place-items-center ring-4 ring-white/80 ring-offset-2 ring-offset-pinkSoft/30">
-            <WandIcon className="w-11 h-11 text-white drop-shadow-sm" />
+          <div className="text-center space-y-4 sm:space-y-5">
+            <div className="mx-auto w-[4.5rem] h-[4.5rem] sm:w-20 sm:h-20 rounded-full bg-accent-btn shadow-accent grid place-items-center ring-2 ring-white/90 ring-offset-2 ring-offset-pinkSoft/30">
+              <WandIcon className="w-9 h-9 sm:w-10 sm:h-10 text-white drop-shadow-sm" />
+            </div>
+
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl text-ink leading-tight px-1">
+              Thank you —{" "}
+              <span className="bg-gradient-to-r from-pinkDeep via-pinkDeep to-goldDeep bg-clip-text text-transparent">
+                you&apos;re officially on the calendar!
+              </span>
+            </h1>
+            <p className="accent-hr max-w-xs mx-auto" />
+
+            <p className="text-ink text-base sm:text-lg leading-relaxed font-medium max-w-2xl mx-auto px-1">
+              Your payment went through beautifully. We&apos;re already looking forward to
+              making your party magical.
+            </p>
           </div>
 
-          <h1 className="font-display text-3xl sm:text-5xl mt-7 text-ink leading-tight">
-            Thank you —{" "}
-            <span className="bg-gradient-to-r from-pinkDeep via-pinkDeep to-goldDeep bg-clip-text text-transparent">
-              you&apos;re officially on the calendar!
-            </span>
-          </h1>
-          <p className="accent-hr mt-5 max-w-xs mx-auto" />
-
-          <p className="mt-6 text-ink text-base sm:text-lg leading-relaxed font-medium">
-            Your payment went through beautifully. We&apos;re already looking forward to
-            making your party magical.
-          </p>
-
-          {stripeSession && (
-            <div className="mt-8 text-left rounded-3xl border border-pinkBlush/60 bg-white/95 shadow-magical backdrop-blur-sm p-6 sm:p-8 space-y-5">
-              <div className="flex items-center gap-2 justify-center sm:justify-start">
-                <span className="text-xl" aria-hidden>
-                  ✨
-                </span>
-                <h2 className="font-display text-xl sm:text-2xl text-ink text-center sm:text-left">
-                  Save your order details
-                </h2>
-              </div>
-              <p className="text-sm sm:text-base text-inkSoft leading-relaxed">
-                Please <strong className="text-ink">keep a screenshot or note</strong> of
-                the references below. You&apos;ll need them if you email us about this
-                booking.
-              </p>
-
-              <div className="space-y-4 rounded-2xl bg-pinkSoft/50 border border-pinkBlush/40 p-4 sm:p-5">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-pinkDeep mb-1">
-                    Booking reference
-                  </p>
-                  <p className="font-mono text-xs sm:text-sm text-ink break-all bg-white/90 rounded-lg px-3 py-2 border border-pinkBlush/50">
-                    {bookingId ?? (recordStatus === "pending" ? "Loading…" : "—")}
-                  </p>
-                  {bookingId && (
-                    <button
-                      type="button"
-                      className="mt-2 text-sm font-semibold text-pinkDeep underline underline-offset-2 hover:text-pinkDeep/90"
-                      onClick={() => void copyText("Booking reference", bookingId, showCopyHint)}
-                    >
-                      Copy booking reference
-                    </button>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-pinkDeep mb-1">
-                    Checkout reference
-                  </p>
-                  <p className="font-mono text-[11px] sm:text-xs text-ink break-all bg-white/90 rounded-lg px-3 py-2 border border-pinkBlush/50">
-                    {stripeSession}
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-2 text-sm font-semibold text-pinkDeep underline underline-offset-2 hover:text-pinkDeep/90"
-                    onClick={() =>
-                      void copyText("Checkout reference", stripeSession, showCopyHint)
-                    }
-                  >
-                    Copy checkout reference
-                  </button>
-                </div>
-              </div>
-
-              {copyHint && (
-                <p className="text-center text-sm text-pinkDeep font-medium" role="status">
-                  {copyHint}
-                </p>
-              )}
-
-              <div className="rounded-2xl border border-gold/35 bg-cream/90 px-4 py-4 text-sm text-ink/90 leading-relaxed">
-                <p className="font-semibold text-ink mb-2 text-center sm:text-left">
-                  Confirmation email
-                </p>
-                <p>
-                  We&apos;re sending a <strong>confirmation email</strong> to the address
-                  you used at checkout (check your <strong>inbox and spam</strong> folder).
-                </p>
-                <p className="mt-3">
-                  If nothing arrives within a little while, please email us at{" "}
-                  <a
-                    href={mailSupportHref}
-                    className="text-pinkDeep font-semibold underline underline-offset-2 break-all"
-                  >
-                    {SITE.email}
-                  </a>{" "}
-                  and include your{" "}
-                  <strong className="text-ink">booking reference</strong>
-                  {bookingId ? " above" : " (loading above)"} or your{" "}
-                  <strong className="text-ink">checkout reference</strong> so we can find
-                  you instantly.
-                </p>
-              </div>
-            </div>
-          )}
-
           {stripeSession && recordStatus === "pending" && (
-            <p className="mt-6 text-sm text-inkSoft max-w-lg mx-auto bg-white/60 rounded-xl px-4 py-3 border border-pinkBlush/30">
+            <p className="text-sm text-inkSoft max-w-2xl mx-auto bg-white/80 rounded-2xl px-4 py-3 border border-pinkBlush/35 leading-relaxed text-center sm:text-left">
               We&apos;re confirming your payment — this usually takes a few seconds. Your
-              booking reference will appear above as soon as we&apos;ve linked everything.
+              booking reference will appear below as soon as we&apos;ve linked everything.
             </p>
           )}
           {stripeSession && slowPoll && recordStatus !== "confirmed" && (
-            <p className="mt-4 text-sm text-amber-900 max-w-lg mx-auto bg-amber-50/90 rounded-xl px-4 py-3 border border-amber-200">
+            <p className="text-sm text-amber-950 max-w-2xl mx-auto bg-amber-50/95 rounded-2xl px-4 py-3 border border-amber-200 leading-relaxed text-center sm:text-left">
               Confirmation is taking longer than usual. If you have a Stripe receipt, your
               payment went through — email{" "}
               <a href={mailSupportHref} className="text-pinkDeep font-semibold underline">
                 {SITE.email}
               </a>{" "}
-              with your <strong>checkout reference</strong> above, or call{" "}
+              with your <strong>name</strong>, <strong>party date</strong>, and the{" "}
+              <strong>email you used at checkout</strong>, or call{" "}
               <a href={`tel:${SITE.phoneTel}`} className="text-pinkDeep underline font-semibold">
                 {SITE.phone}
               </a>
@@ -241,17 +159,119 @@ export default function BookingSuccess() {
             </p>
           )}
 
+          <div className="rounded-3xl border border-pinkBlush/50 bg-white/95 shadow-soft backdrop-blur-sm text-left overflow-hidden">
+            {stripeSession && (
+              <div className="p-6 sm:p-8 md:p-10 space-y-6 sm:space-y-8">
+                <div className="text-center sm:text-left space-y-2">
+                  <div className="flex items-center gap-2 justify-center sm:justify-start">
+                    <span className="text-xl" aria-hidden>
+                      ✨
+                    </span>
+                    <h2 className="font-display text-xl sm:text-2xl text-ink">
+                      Save your booking reference
+                    </h2>
+                  </div>
+                  <p className="text-sm sm:text-base text-inkSoft leading-relaxed max-w-2xl mx-auto sm:mx-0">
+                    Please <strong className="text-ink">keep a screenshot or note</strong> of
+                    your reference — it helps us find your party quickly if you ever email us.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-gradient-to-br from-pinkSoft/80 via-white to-lavender/40 border border-pinkBlush/45 p-5 sm:p-6">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-pinkDeep mb-2">
+                    Booking reference
+                  </p>
+                  <p className="font-mono text-sm sm:text-base text-ink break-all bg-white/95 rounded-xl px-4 py-3.5 border border-pinkBlush/50 leading-snug">
+                    {bookingId ?? (recordStatus === "pending" ? "Loading…" : "—")}
+                  </p>
+                  {bookingId && (
+                    <button
+                      type="button"
+                      className="mt-3 text-sm font-semibold text-pinkDeep underline underline-offset-2 hover:text-pinkDeep/90"
+                      onClick={() => void copyText("Booking reference", bookingId, showCopyHint)}
+                    >
+                      Copy booking reference
+                    </button>
+                  )}
+                  {copyHint && (
+                    <p className="mt-2 text-sm text-pinkDeep font-medium" role="status">
+                      {copyHint}
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-gold/30 bg-cream/95 px-5 py-5 sm:px-6 sm:py-6 text-sm sm:text-base text-ink/90 leading-relaxed space-y-3">
+                  <p className="font-semibold text-ink text-center sm:text-left">
+                    Confirmation email
+                  </p>
+                  <p>
+                    We&apos;re sending a <strong>confirmation email</strong> to the address
+                    you used at checkout (check your <strong>inbox and spam</strong> folder).
+                  </p>
+                  <p>
+                    If nothing arrives within a little while, email{" "}
+                    <a
+                      href={mailSupportHref}
+                      className="text-pinkDeep font-semibold underline underline-offset-2 break-all"
+                    >
+                      {SITE.email}
+                    </a>{" "}
+                    and include your <strong className="text-ink">booking reference</strong>
+                    {bookingId ? " above" : " once it appears above"}.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div
+              className={`${stripeSession ? "border-t border-pinkBlush/40" : ""} p-6 sm:p-8 md:p-10`}
+            >
+              <h2 className="font-display text-xl sm:text-2xl text-center text-ink">
+                What happens next?
+              </h2>
+              <ol className="mt-5 sm:mt-6 space-y-4 text-sm sm:text-base text-ink/90 max-w-2xl mx-auto">
+                <li className="flex gap-3 sm:gap-4">
+                  <span className="w-9 h-9 shrink-0 grid place-items-center rounded-full bg-accent-btn text-white text-sm font-bold shadow-accent">
+                    1
+                  </span>
+                  <span className="leading-relaxed pt-0.5">
+                    <strong className="text-ink">Your inbox sparkles next</strong> — look for
+                    our confirmation with every party detail we have on file.
+                  </span>
+                </li>
+                <li className="flex gap-3 sm:gap-4">
+                  <span className="w-9 h-9 shrink-0 grid place-items-center rounded-full bg-accent-btn text-white text-sm font-bold shadow-accent">
+                    2
+                  </span>
+                  <span className="leading-relaxed pt-0.5">
+                    <strong className="text-ink">A gentle reminder</strong> closer to the big
+                    day so the magic stays stress-free.
+                  </span>
+                </li>
+                <li className="flex gap-3 sm:gap-4">
+                  <span className="w-9 h-9 shrink-0 grid place-items-center rounded-full bg-accent-btn text-white text-sm font-bold shadow-accent">
+                    3
+                  </span>
+                  <span className="leading-relaxed pt-0.5">
+                    <strong className="text-ink">Showtime!</strong> Your princess arrives
+                    ready to celebrate.
+                  </span>
+                </li>
+              </ol>
+            </div>
+          </div>
+
           {dev && (
-            <div className="mt-8 mx-auto max-w-lg p-5 rounded-2xl bg-white/90 border border-pinkBlush/50 text-sm text-ink text-left shadow-soft">
+            <div className="max-w-2xl mx-auto p-5 sm:p-6 rounded-2xl bg-white/90 border border-pinkBlush/50 text-sm text-ink text-left shadow-soft leading-relaxed">
               <strong className="block mb-2 text-pinkDeep">Demo visit (no online payment)</strong>
               <p className="mb-2">
-                The <code className="bg-pinkSoft px-1.5 rounded text-xs">?dev=1</code> in
-                the address means the card step was skipped — it does <em>not</em> put the
-                whole site in developer mode.
+                The <code className="bg-pinkSoft px-1.5 rounded text-xs">?dev=1</code> in the
+                address means the card step was skipped — it does <em>not</em> put the whole
+                site in developer mode.
               </p>
               <p>
-                On the live site after a real payment you&apos;ll see your{" "}
-                <strong>booking</strong> and <strong>checkout</strong> references here. Try{" "}
+                After a real payment you&apos;ll see your <strong>booking reference</strong>{" "}
+                in the highlighted box on this page. Try{" "}
                 <Link to="/book" className="text-pinkDeep underline font-medium">
                   Book again
                 </Link>{" "}
@@ -260,49 +280,14 @@ export default function BookingSuccess() {
             </div>
           )}
 
-          <div className="mt-10 card-magical p-7 sm:p-8 text-left border border-pinkBlush/30 shadow-soft bg-white/90">
-            <h2 className="font-display text-xl sm:text-2xl text-center text-ink">
-              What happens next?
-            </h2>
-            <ol className="mt-6 space-y-4 text-sm sm:text-base text-ink/90">
-              <li className="flex gap-3">
-                <span className="w-8 h-8 shrink-0 grid place-items-center rounded-full bg-accent-btn text-white text-sm font-bold shadow-accent">
-                  1
-                </span>
-                <span>
-                  <strong className="text-ink">Your inbox sparkles next</strong> — look for
-                  our confirmation with every party detail we have on file.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="w-8 h-8 shrink-0 grid place-items-center rounded-full bg-accent-btn text-white text-sm font-bold shadow-accent">
-                  2
-                </span>
-                <span>
-                  <strong className="text-ink">A gentle reminder</strong> closer to the big
-                  day so the magic stays stress-free.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="w-8 h-8 shrink-0 grid place-items-center rounded-full bg-accent-btn text-white text-sm font-bold shadow-accent">
-                  3
-                </span>
-                <span>
-                  <strong className="text-ink">Showtime!</strong> Your princess arrives
-                  ready to celebrate.
-                </span>
-              </li>
-            </ol>
-          </div>
-
-          <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/" className="btn-primary">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap pt-2">
+            <Link to="/" className="btn-primary min-h-[3rem]">
               Back to Home
             </Link>
-            <a href={`tel:${SITE.phoneTel}`} className="btn-secondary">
+            <a href={`tel:${SITE.phoneTel}`} className="btn-secondary min-h-[3rem]">
               Call {SITE.phone}
             </a>
-            <a href={mailSupportHref} className="btn-secondary">
+            <a href={mailSupportHref} className="btn-secondary min-h-[3rem]">
               Email us
             </a>
           </div>

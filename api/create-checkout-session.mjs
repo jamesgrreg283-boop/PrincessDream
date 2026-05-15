@@ -222,6 +222,7 @@ export default async function handler(req, res) {
       metadata: {
         booking_id: bookingId,
         packageSlug: String(packageSlug),
+        occasionType: String(booking.occasionType || "child_birthday").slice(0, 500),
         parentName: String(booking.parentName || "").slice(0, 500),
         childName: String(booking.childName || "").slice(0, 500),
         partyDate: String(booking.partyDate || "").slice(0, 500),

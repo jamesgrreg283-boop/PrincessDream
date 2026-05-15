@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useLocation } from "react-router-dom";
 import { SITE } from "../data/site";
 
 /**
@@ -6,8 +7,11 @@ import { SITE } from "../data/site";
  * Bottom-right, with a small offset above the mobile sticky CTA.
  */
 export default function FloatingContact() {
+  const { pathname } = useLocation();
+  if (pathname.startsWith("/booking-success")) return null;
+
   return (
-    <div className="fixed right-4 bottom-24 lg:bottom-6 z-40 flex flex-col gap-3">
+    <div className="fixed right-4 z-40 flex flex-col gap-3 bottom-[calc(6.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
       <motion.a
         href={`tel:${SITE.phoneTel}`}
         aria-label={`Call ${SITE.name}`}

@@ -75,6 +75,7 @@ export default async function handler(req, res) {
     }
 
     const booking = {
+      occasionType: body.occasionType ?? "child_birthday",
       parentName: body.parentName,
       email: body.email,
       phone: body.phone,

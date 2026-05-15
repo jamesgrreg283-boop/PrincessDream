@@ -90,14 +90,16 @@ function bookingDetailLines(booking) {
     : escPlain(slug) || "—";
   const princess = characterLabel(booking?.selected_character);
   const notesRaw = booking?.notes != null ? String(booking.notes).trim() : "";
-  const notes = notesRaw ? escPlain(notesRaw) : "—";
+  const { occasion, restNotes } = splitOccasionFromNotes(notesRaw);
+  const notesDisplay = restNotes ? escPlain(restNotes) : "—";
 
   return [
     ["Parent name", escPlain(booking?.parent_name) || "—"],
     ["Email", escPlain(booking?.email) || "—"],
     ["Phone", escPlain(booking?.phone) || "—"],
-    ["Child's name", escPlain(booking?.child_name) || "—"],
-    ["Child's age", escPlain(booking?.child_age) || "—"],
+    ["Occasion", escPlain(occasion) || "—"],
+    ["Guest / group / birthday child", escPlain(booking?.child_name) || "—"],
+    ["Age (if given)", escPlain(booking?.child_age) || "—"],
     ["Party date", escPlain(booking?.party_date) || "—"],
     ["Start time", escPlain(booking?.party_start_time) || "—"],
     ["Address", escPlain(booking?.address) || "—"],
@@ -106,8 +108,22 @@ function bookingDetailLines(booking) {
     ["Total price", safePounds(booking?.total_price)],
     ["Deposit paid", safePounds(booking?.deposit_amount)],
     ["Balance due on the day", safePounds(booking?.remaining_balance)],
-    ["Notes / special requests", notes],
+    ["Notes / special requests", notesDisplay],
   ];
+}
+
+/** First paragraph from `buildNotes` is `Occasion: …`; keep table tidy for older rows without it. */
+function splitOccasionFromNotes(notesRaw) {
+  const raw = String(notesRaw ?? "").trim();
+  if (!raw) return { occasion: null, restNotes: "" };
+  const parts = raw.split("\n\n");
+  const first = parts[0] ?? "";
+  if (/^Occasion:\s*/i.test(first)) {
+    const occasion = first.replace(/^Occasion:\s*/i, "").trim();
+    const restNotes = parts.slice(1).join("\n\n").trim();
+    return { occasion: occasion || null, restNotes };
+  }
+  return { occasion: null, restNotes: raw };
 }
 
 function formatBookingDetailsPlain(booking) {

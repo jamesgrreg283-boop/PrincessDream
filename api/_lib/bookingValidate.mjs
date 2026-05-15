@@ -3,8 +3,23 @@ import { isValidPartyDate, isValidPartyTime } from "./availability.mjs";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
+const OCCASION_LABELS = {
+  child_birthday: "Child's birthday party",
+  family_celebration: "Family celebration",
+  corporate_school: "School, nursery, or corporate event",
+  other: "Other occasion",
+};
+
+const ALLOWED_OCCASIONS = new Set(Object.keys(OCCASION_LABELS));
+
+function occasionLine(booking) {
+  const t = String(booking.occasionType || "child_birthday");
+  const label = OCCASION_LABELS[t] || t;
+  return `Occasion: ${label}`;
+}
+
 export function buildNotes(booking) {
-  const parts = [];
+  const parts = [occasionLine(booking)];
   const n = String(booking.numChildren || "").trim();
   if (n) parts.push(`Number of children: ${n}`);
   const s = String(booking.specialRequests || "").trim();
@@ -19,12 +34,16 @@ export function validateBookingPayload(booking) {
   }
   const b = booking;
 
+  const occasionType = String(b.occasionType || "child_birthday");
+  if (!ALLOWED_OCCASIONS.has(occasionType)) e.push("occasionType");
+
   if (!String(b.parentName || "").trim()) e.push("parentName");
   if (!EMAIL_RE.test(String(b.email || "").trim())) e.push("email");
   if (!String(b.phone || "").trim() || String(b.phone).replace(/\D/g, "").length < 7)
     e.push("phone");
   if (!String(b.childName || "").trim()) e.push("childName");
-  if (!String(b.childAge || "").trim()) e.push("childAge");
+  if (occasionType === "child_birthday" && !String(b.childAge || "").trim())
+    e.push("childAge");
   if (!isValidPartyDate(String(b.partyDate || ""))) e.push("partyDate");
   if (!isValidPartyTime(String(b.partyTime || ""))) e.push("partyTime");
   if (!String(b.address || "").trim()) e.push("address");
@@ -36,12 +55,13 @@ export function validateBookingPayload(booking) {
 }
 
 export function bookingRowFromPayload(booking, pkg) {
+  const ageTrim = String(booking.childAge || "").trim();
   return {
     parent_name: String(booking.parentName).trim(),
     email: String(booking.email).trim(),
     phone: String(booking.phone).trim(),
     child_name: String(booking.childName).trim(),
-    child_age: String(booking.childAge).trim(),
+    child_age: ageTrim || "—",
     party_date: String(booking.partyDate),
     party_start_time: String(booking.partyTime),
     address: String(booking.address).trim(),

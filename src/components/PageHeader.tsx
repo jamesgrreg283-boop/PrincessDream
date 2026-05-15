@@ -13,7 +13,7 @@ export default function PageHeader({ eyebrow, title, subtitle }: Props) {
   return (
     <section className="relative overflow-hidden bg-white">
       <Sparkles count={28} variant="gold" className="opacity-50" />
-      <div className="container-px max-w-5xl mx-auto pt-20 sm:pt-28 pb-16 sm:pb-20 text-center relative z-10">
+      <div className="container-px max-w-5xl mx-auto pt-16 sm:pt-24 md:pt-28 pb-12 sm:pb-16 md:pb-20 text-center relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -63,9 +63,9 @@ export default function MagicalDateField({
             id={id}
             type="button"
             aria-invalid={invalid || undefined}
-            className="input-magical input-magical-enhanced w-full min-h-[3.25rem] px-4 py-3.5 text-left flex items-center justify-between gap-2"
+            className="input-magical input-magical-enhanced w-full min-h-[3.25rem] min-w-0 px-4 py-3.5 text-left flex items-center justify-between gap-2 touch-manipulation"
           >
-            <span className={selected ? "text-ink" : "text-inkSoft"}>{label}</span>
+            <span className={`min-w-0 truncate ${selected ? "text-ink" : "text-inkSoft"}`}>{label}</span>
             <HiOutlineCalendar className="shrink-0 w-5 h-5 text-pinkDeep opacity-90" aria-hidden />
           </PopoverButton>
           <PopoverPanel
@@ -73,7 +73,7 @@ export default function MagicalDateField({
             portal
             modal={false}
             anchor="bottom start"
-            className="z-[200] mt-1.5 rounded-2xl border border-pinkBlush/90 bg-white p-3 shadow-magical outline-none
+            className="z-[200] mt-1.5 max-w-[min(calc(100vw-2rem),22rem)] rounded-2xl border border-pinkBlush/90 bg-white p-3 shadow-magical outline-none overflow-x-auto
               transition duration-150 ease-out
               data-[closed]:opacity-0 data-[closed]:-translate-y-0.5"
           >

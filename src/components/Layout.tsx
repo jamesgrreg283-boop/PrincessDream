@@ -8,7 +8,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className="relative z-10 flex-1 pb-28 lg:pb-0">{children}</main>
+      <main className="relative z-10 flex-1 pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">{children}</main>
       <Footer />
       <FloatingContact />
       <StickyMobileCTA />

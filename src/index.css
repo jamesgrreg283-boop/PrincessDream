@@ -14,6 +14,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 body {
@@ -76,7 +77,9 @@ body {
 
   .card-magical {
     @apply bg-white rounded-3xl shadow-soft overflow-hidden border border-pinkSoft/70
-           transition-all duration-300 hover:shadow-magical hover:-translate-y-1;
+           transition-all duration-300
+           max-lg:hover:translate-y-0 max-lg:hover:shadow-soft
+           lg:hover:shadow-magical lg:hover:-translate-y-1;
   }
 
   .heading-display {

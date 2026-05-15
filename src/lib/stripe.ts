@@ -21,6 +21,7 @@
 // ============================================================================
 
 import type { Package } from "../data/packages";
+import type { OccasionType } from "../data/occasions";
 
 /** Shown on `/book?checkout_error=1` after a failed Checkout Session POST. */
 export const CHECKOUT_ERROR_STORAGE_KEY = "apd_checkout_error";
@@ -66,6 +67,8 @@ function checkoutSessionUrl(): string | undefined {
 }
 
 export type BookingPayload = {
+  /** Drives which “who we’re visiting” fields are shown and validated. */
+  occasionType: OccasionType;
   parentName: string;
   email: string;
   phone: string;

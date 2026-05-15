@@ -11,6 +11,12 @@ import TrustBadges from "../components/TrustBadges";
 import MagicalDateField from "../components/MagicalDateField";
 import MagicalListbox from "../components/MagicalListbox";
 import { redirectToDeposit, type BookingPayload, CHECKOUT_ERROR_STORAGE_KEY } from "../lib/stripe";
+import {
+  DEFAULT_OCCASION,
+  OCCASION_OPTIONS,
+  occasionFieldCopy,
+  type OccasionType,
+} from "../data/occasions";
 
 /** Party start times: every day, 9:00 am–4:00 pm inclusive, 15-minute steps. */
 const PARTY_START_TIME_OPTIONS: { value: string; label: string }[] = (() => {
@@ -54,6 +60,7 @@ function localDateISO(date = new Date()): string {
 type FormState = BookingPayload & { agreeTerms: boolean };
 
 const initialState: FormState = {
+  occasionType: DEFAULT_OCCASION,
   parentName: "",
   email: "",
   phone: "",
@@ -162,10 +169,21 @@ export default function Book() {
     [form.packageSlug]
   );
 
+  const occasionCopy = useMemo(
+    () => occasionFieldCopy(form.occasionType as OccasionType),
+    [form.occasionType]
+  );
+
   const partyTimeOptions = useMemo(
     () =>
-      PARTY_TIME_LIST_OPTIONS.filter(
-        (o) => !o.value || !occupiedTimes.includes(o.value)
+      PARTY_TIME_LIST_OPTIONS.map((o) =>
+        o.value === ""
+          ? { ...o }
+          : {
+              ...o,
+              disabled: occupiedTimes.includes(o.value),
+              label: occupiedTimes.includes(o.value) ? `${o.label} (booked)` : o.label,
+            }
       ),
     [occupiedTimes]
   );
@@ -215,13 +233,17 @@ export default function Book() {
     if (!/^\S+@\S+\.\S+$/.test(form.email)) e.email = "Please enter a valid email";
     if (!form.phone.trim() || form.phone.replace(/\D/g, "").length < 7)
       e.phone = "Please enter a valid phone number";
-    if (!form.childName.trim()) e.childName = "Please enter your child's name";
-    if (!form.childAge.trim()) e.childAge = "Please enter your child's age";
+    if (!form.childName.trim()) e.childName = "Please fill in this field";
+    if (form.occasionType === "child_birthday") {
+      if (!form.childAge.trim()) e.childAge = "Please enter your child's age";
+    }
     if (!form.partyDate) e.partyDate = "Please choose a date";
     if (!form.partyTime) e.partyTime = "Please choose a start time";
     else if (!PARTY_TIME_VALUE_SET.has(form.partyTime))
       e.partyTime = "Please choose a time between 9:00 am and 4:00 pm";
-    if (!form.address.trim()) e.address = "Please enter the party address";
+    else if (occupiedTimes.includes(form.partyTime))
+      e.partyTime = "That time is already booked — pick another slot";
+    if (!form.address.trim()) e.address = "Please enter the address";
     if (!form.character.trim()) e.character = "Please choose a princess";
     if (!form.packageSlug) e.packageSlug = "Please choose a package";
     if (!form.agreeTerms) e.agreeTerms = "Please agree to the terms";
@@ -243,7 +265,7 @@ export default function Book() {
     try {
       try {
         const av = await fetch(
-          `${window.location.origin}/api/check-availability?date=${encodeURIComponent(form.partyDate)}&time=${encodeURIComponent(form.partyTime)}`
+          `${window.location.origin}/api/check-availability?date=${encodeURIComponent(form.partyDate)}&time=${encodeURIComponent(form.partyTime)}&packageSlug=${encodeURIComponent(form.packageSlug)}`
         );
         let avJson: { available?: boolean; error?: string } = {};
         try {
@@ -270,6 +292,7 @@ export default function Book() {
       }
 
       const payload: BookingPayload = {
+        occasionType: form.occasionType,
         parentName: form.parentName,
         email: form.email,
         phone: form.phone,
@@ -311,14 +334,14 @@ export default function Book() {
 
       <section className="section-pad bg-white relative overflow-hidden">
         <Sparkles count={32} variant="gold" className="opacity-40" />
-        <div className="container-px max-w-6xl mx-auto grid lg:grid-cols-[1.5fr_1fr] gap-10 relative z-10">
+        <div className="container-px max-w-6xl mx-auto grid min-w-0 lg:grid-cols-[1.5fr_1fr] gap-8 lg:gap-10 relative z-10">
           {/* ============================ FORM ============================ */}
           <motion.form
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             onSubmit={handleSubmit}
-            className="card-magical p-6 sm:p-8 lg:p-10 space-y-5"
+            className="card-magical min-w-0 p-5 sm:p-8 lg:p-10 space-y-5"
             noValidate
           >
             {checkoutErrorBanner && (
@@ -378,31 +401,69 @@ export default function Book() {
               </Field>
             </div>
 
-            <h2 className="heading-display text-2xl sm:text-3xl pt-4">Birthday Child</h2>
+            <Field label="Type of occasion" htmlFor="occasionType">
+              <MagicalListbox
+                id="occasionType"
+                value={form.occasionType}
+                onChange={(v) => {
+                  const next = v as OccasionType;
+                  setForm((f) => ({
+                    ...f,
+                    occasionType: next,
+                    ...(next !== "family_celebration" && next !== "child_birthday"
+                      ? { childAge: "" }
+                      : {}),
+                  }));
+                  setErrors((prev) => {
+                    const { childAge: _a, ...rest } = prev;
+                    return rest;
+                  });
+                }}
+                options={[...OCCASION_OPTIONS]}
+                placeholder="Choose occasion type"
+              />
+            </Field>
 
-            <div className="grid sm:grid-cols-[2fr_1fr] gap-5">
-              <Field label="Child's Name" error={errors.childName} htmlFor="childName">
+            <h2 className="heading-display text-2xl sm:text-3xl pt-2">{occasionCopy.sectionTitle}</h2>
+            <p className="text-sm text-inkSoft -mt-1 leading-relaxed">{occasionCopy.sectionBlurb}</p>
+
+            <div
+              className={
+                occasionCopy.showAge ? "grid sm:grid-cols-[2fr_1fr] gap-5" : "grid gap-5"
+              }
+            >
+              <Field
+                label={occasionCopy.primaryLabel}
+                error={errors.childName}
+                htmlFor="childName"
+              >
                 <input
                   id="childName"
                   type="text"
                   className="input-magical"
-                  placeholder="Lily"
+                  placeholder={occasionCopy.primaryPlaceholder}
                   value={form.childName}
                   onChange={(e) => update("childName", e.target.value)}
                 />
               </Field>
-              <Field label="Child's Age" error={errors.childAge} htmlFor="childAge">
-                <input
-                  id="childAge"
-                  type="number"
-                  min={1}
-                  max={15}
-                  className="input-magical input-magical-enhanced"
-                  placeholder="5"
-                  value={form.childAge}
-                  onChange={(e) => update("childAge", e.target.value)}
-                />
-              </Field>
+              {occasionCopy.showAge && (
+                <Field
+                  label={occasionCopy.secondaryLabel}
+                  error={errors.childAge}
+                  htmlFor="childAge"
+                >
+                  <input
+                    id="childAge"
+                    type="number"
+                    min={1}
+                    max={99}
+                    className="input-magical input-magical-enhanced"
+                    placeholder={occasionCopy.secondaryPlaceholder}
+                    value={form.childAge}
+                    onChange={(e) => update("childAge", e.target.value)}
+                  />
+                </Field>
+              )}
             </div>
 
             <h2 className="heading-display text-2xl sm:text-3xl pt-4">Party Details</h2>
@@ -434,16 +495,20 @@ export default function Book() {
                   placeholder="Select start time"
                   invalid={!!errors.partyTime}
                 />
+                <p className="mt-1.5 text-xs text-inkSoft leading-snug">
+                  Times shown in grey are already booked — it helps show how popular we are. Pick
+                  a free slot to continue.
+                </p>
               </Field>
             </div>
 
-            <Field label="Party Address" error={errors.address} htmlFor="address">
+            <Field label={occasionCopy.addressLabel} error={errors.address} htmlFor="address">
               <input
                 id="address"
                 type="text"
                 autoComplete="street-address"
                 className="input-magical"
-                placeholder="1 Royal Lane, Coventry, CV1 1AA"
+                placeholder={occasionCopy.addressPlaceholder}
                 value={form.address}
                 onChange={(e) => update("address", e.target.value)}
               />
@@ -472,7 +537,7 @@ export default function Book() {
               </Field>
             </div>
 
-            <Field label="Number of Children" htmlFor="numChildren">
+            <Field label={occasionCopy.childrenCountLabel} htmlFor="numChildren">
               <input
                 id="numChildren"
                 type="number"
@@ -538,8 +603,8 @@ export default function Book() {
 
           {/* ============================ SUMMARY ============================ */}
           {/* Sidebar: stick the whole column so summary + chat never overlap */}
-          <aside className="space-y-6 lg:sticky lg:top-24 lg:z-10 lg:self-start lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto lg:overscroll-contain">
-            <div className="card-magical p-7">
+          <aside className="min-w-0 space-y-6 lg:sticky lg:top-24 lg:z-10 lg:self-start lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto lg:overscroll-contain">
+            <div className="card-magical p-5 sm:p-7">
               <div className="heading-eyebrow">Booking Summary</div>
               <h3 className="font-display text-2xl mt-2">{selectedPackage.name}</h3>
               <p className="text-sm text-inkSoft mt-1">{selectedPackage.tagline}</p>
