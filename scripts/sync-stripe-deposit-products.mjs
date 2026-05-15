@@ -19,8 +19,7 @@ const DEPOSITS = [
     name: "PrincessDream — 30 Minute Appearance (deposit)",
     description:
       "Online deposit to secure a 30-minute princess appearance. Balance due before the party.",
-    /** 100 = £1 test deposit; use 4000 for live £40 catalogue (must match create-checkout-session). */
-    unitAmountPence: 100,
+    unitAmountPence: 4000,
   },
   {
     slug: "1-hour-party",

@@ -9,14 +9,8 @@ import {
 import { packageBySlug } from "./_lib/packages.mjs";
 
 const DEPOSITS_PENCE = {
-  /**
-   * Must match `api/_lib/packages.mjs` depositOnline (pence).
-   * 30-min is intentionally **£1 (100p)** for cheap Stripe test checkouts.
-   * Your Stripe catalogue may still show £40 — either leave
-   * `STRIPE_PRICE_30_MINUTE_APPEARANCE` **unset** (Checkout uses inline `price_data`),
-   * or create a separate £1 Price in Stripe and point the env var at that `price_…`.
-   */
-  "30-minute-appearance": 100,
+  /** Must match `api/_lib/packages.mjs` depositOnline (whole pounds → pence). */
+  "30-minute-appearance": 4000,
   "1-hour-party": 5000,
   "2-hour-party": 5000,
 };

@@ -21,8 +21,7 @@ export const PACKAGES: Package[] = [
     name: "30 Minute Appearance",
     duration: "30 minutes",
     price: 100,
-    /** £1 while testing Stripe; live deposit is £40 — keep in sync with `api/_lib/packages.mjs`. */
-    depositOnline: 1,
+    depositOnline: 40,
     tagline: "A magical short visit — perfect for younger children.",
     includes: [
       "Meet and Greet",
