@@ -352,15 +352,29 @@ function formatCustomerConfirmationText(booking) {
 }
 
 /**
- * Sends admin + customer confirmation emails via Resend.
- * Call only for a paid, confirmed booking row (e.g. Stripe webhook or ensure-booking-emails).
+ * Sends admin + customer confirmation emails via Resend (same templates as Stripe webhook).
+ *
+ * @param {object} booking - booking row shape for templates
+ * @param {{
+ *   skipAlreadySentCheck?: boolean;
+ *   idempotencyNonce?: string | null;
+ *   customerToOverride?: string | null;
+ *   subjectPrefix?: string | null;
+ * }} [options]
  */
-export async function sendBookingConfirmationEmails(booking) {
+export async function sendBookingConfirmationEmails(booking, options = {}) {
+  const {
+    skipAlreadySentCheck = false,
+    idempotencyNonce = null,
+    customerToOverride = null,
+    subjectPrefix = null,
+  } = options;
+
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
   const adminInbox = primaryContactEmail();
 
-  if (booking?.confirmation_emails_sent_at) {
+  if (!skipAlreadySentCheck && booking?.confirmation_emails_sent_at) {
     console.log(
       `Booking emails skipped: already recorded for booking ${booking?.id || "?"}`
     );
@@ -384,14 +398,21 @@ export async function sendBookingConfirmationEmails(booking) {
   const idBase = booking?.id
     ? `booking-${booking.id}`
     : `booking-${booking?.stripe_session_id || "unknown"}`;
+  const idemSuffix = idempotencyNonce || "confirm-v1";
 
   const childName = escPlain(booking?.child_name) || "—";
   const partyDate = escPlain(booking?.party_date) || "—";
   const partyTime = escPlain(booking?.party_start_time) || "—";
-  const adminSubject = `New booking: ${childName} · ${partyDate} · ${partyTime}`;
+  const prefix = subjectPrefix || "";
+  const adminSubject = `${prefix}New booking: ${childName} · ${partyDate} · ${partyTime}`;
+  const customerSubject = `${prefix}Your PrincessDream booking is confirmed ✨`;
 
   const errors = [];
-  const customerTo = safeReplyTo(booking?.email);
+  const customerTo = safeReplyTo(
+    customerToOverride != null && String(customerToOverride).trim()
+      ? String(customerToOverride).trim()
+      : booking?.email
+  );
   if (!customerTo) {
     console.error(
       "Booking customer email skipped: invalid or missing customer email on booking row"
@@ -430,7 +451,7 @@ export async function sendBookingConfirmationEmails(booking) {
         from,
         to: customerTo,
         replyTo: adminInbox,
-        subject: "Your PrincessDream booking is confirmed ✨",
+        subject: customerSubject,
         html: formatCustomerConfirmationHtml(booking),
         text: formatCustomerConfirmationText(booking),
       };
@@ -448,7 +469,7 @@ export async function sendBookingConfirmationEmails(booking) {
   if (adminPayload) {
     try {
       toAdmin = await resend.emails.send(adminPayload, {
-        idempotencyKey: `${idBase}-admin-confirm-v1`,
+        idempotencyKey: `${idBase}-admin-${idemSuffix}`,
       });
     } catch (e) {
       console.error("Resend admin booking email threw:", e);
@@ -467,7 +488,7 @@ export async function sendBookingConfirmationEmails(booking) {
   if (customerPayload) {
     try {
       toCustomer = await resend.emails.send(customerPayload, {
-        idempotencyKey: `${idBase}-customer-confirm-v1`,
+        idempotencyKey: `${idBase}-customer-${idemSuffix}`,
       });
     } catch (e) {
       console.error("Resend customer booking email threw:", e);

@@ -143,6 +143,13 @@ export default function AdminBookings() {
   const [blockMsg, setBlockMsg] = useState<string | null>(null);
   const [bookingDeleteConfirmId, setBookingDeleteConfirmId] = useState<string | null>(null);
 
+  const [testPkg, setTestPkg] = useState("30-minute-appearance");
+  const [testEmail, setTestEmail] = useState("");
+  const [testBookingId, setTestBookingId] = useState("");
+  const [testMarkSent, setTestMarkSent] = useState(false);
+  const [testBusy, setTestBusy] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
   const characterOptions = useMemo(
     () => [
       ...CHARACTERS.map((c) => ({ value: c.slug, label: c.name })),
@@ -277,6 +284,35 @@ export default function AdminBookings() {
       window.alert("Confirmation emails sent.");
     } catch {
       window.alert("Network error");
+    }
+  };
+
+  const sendTestConfirmationEmail = async () => {
+    const em = testEmail.trim();
+    if (!em) {
+      window.alert("Enter a test customer email.");
+      return;
+    }
+    setTestBusy(true);
+    setTestResult(null);
+    try {
+      const bid = testBookingId.trim();
+      const r = await fetch(`${origin()}/api/admin/send-test-confirmation-email`, {
+        method: "POST",
+        ...fetchOpts,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerEmail: em,
+          ...(bid ? { bookingId: bid } : { packageSlug: testPkg }),
+          markAsSent: testMarkSent && Boolean(bid),
+        }),
+      });
+      const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+      setTestResult(JSON.stringify(j, null, 2));
+    } catch {
+      setTestResult(JSON.stringify({ error: "Network error" }, null, 2));
+    } finally {
+      setTestBusy(false);
     }
   };
 
@@ -465,7 +501,7 @@ export default function AdminBookings() {
       <PageHeader
         eyebrow="Staff"
         title="Bookings"
-        subtitle="View bookings, update status, add manual entries, and block dates on the public calendar."
+        subtitle="View bookings, update status, add manual entries, block dates, and send no-payment test confirmation emails (staff password required)."
       />
 
       <section className="section-pad bg-white space-y-12 pb-24">
@@ -480,6 +516,86 @@ export default function AdminBookings() {
           >
             Log out
           </button>
+        </div>
+
+        <div className="container-px max-w-6xl mx-auto card-magical p-6 sm:p-8 space-y-4 border-2 border-dashed border-pinkSoft/70 bg-pinkSoft/15">
+          <h2 className="heading-display text-xl text-ink">Test confirmation emails</h2>
+          <p className="text-sm text-inkSoft max-w-2xl">
+            Sends the <strong>same</strong> admin and customer templates as the live Stripe webhook via
+            Resend, with <strong className="text-ink">[TEST]</strong> in the subject lines. No payment and
+            no booking status change. Optional: set <code className="text-xs bg-white/80 px-1 rounded">confirmation_emails_sent_at</code> only when using an existing booking ID and the checkbox below.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-4 max-w-3xl">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-ink">Package (synthetic data)</label>
+              <select
+                className="input-magical w-full"
+                value={testPkg}
+                disabled={Boolean(testBookingId.trim())}
+                onChange={(e) => setTestPkg(e.target.value)}
+              >
+                {PACKAGES.map((p) => (
+                  <option key={p.slug} value={p.slug}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-inkSoft">
+                Disabled when an existing booking ID is set — that row supplies the package.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-ink">Test customer email</label>
+              <input
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                className="input-magical w-full"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="max-w-3xl space-y-2">
+            <label className="block text-sm font-medium text-ink">
+              Existing booking ID <span className="font-normal text-inkSoft">(optional)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="uuid from table above — leave empty for synthetic sample"
+              className="input-magical w-full font-mono text-sm"
+              value={testBookingId}
+              onChange={(e) => setTestBookingId(e.target.value)}
+            />
+          </div>
+          <label className="flex items-start gap-2 max-w-3xl cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-1 rounded border-pinkSoft"
+              checked={testMarkSent}
+              onChange={(e) => setTestMarkSent(e.target.checked)}
+              disabled={!testBookingId.trim()}
+            />
+            <span className="text-sm text-inkSoft">
+              Set <strong className="text-ink">confirmation_emails_sent_at</strong> on this booking after
+              both emails succeed (only when an existing booking ID is used).
+            </span>
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={testBusy}
+              onClick={() => void sendTestConfirmationEmail()}
+            >
+              {testBusy ? "Sending…" : "Send test confirmation email"}
+            </button>
+          </div>
+          {testResult && (
+            <pre className="text-xs bg-ink/5 border border-pinkSoft/40 rounded-xl p-4 overflow-x-auto max-h-80 text-ink">
+              {testResult}
+            </pre>
+          )}
         </div>
 
         {loadError && (

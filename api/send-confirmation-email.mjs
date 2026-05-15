@@ -74,7 +74,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result = await sendBookingConfirmationEmails(row);
+    const result = await sendBookingConfirmationEmails(row, {
+      skipAlreadySentCheck: true,
+      idempotencyNonce: `manual-resend-${Date.now()}`,
+    });
     return res.status(200).json({ ok: true, result });
   } catch (e) {
     console.error(e);
