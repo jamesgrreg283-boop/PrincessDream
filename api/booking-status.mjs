@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
   const { data, error } = await supabase
     .from("bookings")
-    .select("status, party_date, party_start_time")
+    .select("id, status, party_date, party_start_time")
     .eq("stripe_session_id", sessionId)
     .maybeSingle();
 
@@ -48,6 +48,7 @@ export default async function handler(req, res) {
 
   return res.status(200).json({
     status: data.status,
+    bookingId: data.id,
     partyDate: data.party_date,
     partyTime: data.party_start_time,
   });

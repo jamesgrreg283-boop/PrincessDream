@@ -1,10 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import SEO from "../components/SEO";
 import Sparkles from "../components/Sparkles";
 import { WandIcon } from "../components/CrownIcon";
 import { SITE } from "../data/site";
+
+type StatusPayload = {
+  status?: string;
+  bookingId?: string;
+  partyDate?: string;
+  partyTime?: string;
+};
+
+async function copyText(label: string, text: string, onDone: (msg: string) => void) {
+  try {
+    await navigator.clipboard.writeText(text);
+    onDone(`${label} copied`);
+  } catch {
+    onDone("Could not copy — select and copy manually");
+  }
+}
 
 export default function BookingSuccess() {
   const [params] = useSearchParams();
@@ -13,8 +29,15 @@ export default function BookingSuccess() {
   const [recordStatus, setRecordStatus] = useState<"unknown" | "pending" | "confirmed">(
     stripeSession ? "unknown" : "confirmed"
   );
+  const [bookingId, setBookingId] = useState<string | null>(null);
   const [slowPoll, setSlowPoll] = useState(false);
+  const [copyHint, setCopyHint] = useState<string | null>(null);
   const ensureEmailsOnce = useRef(false);
+
+  const showCopyHint = useCallback((msg: string) => {
+    setCopyHint(msg);
+    window.setTimeout(() => setCopyHint(null), 2500);
+  }, []);
 
   useEffect(() => {
     if (!stripeSession) return;
@@ -37,8 +60,9 @@ export default function BookingSuccess() {
           setTimeout(poll, 2000);
           return;
         }
-        const j = (await r.json()) as { status?: string };
+        const j = (await r.json()) as StatusPayload;
         if (cancelled) return;
+        if (j.bookingId) setBookingId(j.bookingId);
         if (j.status === "confirmed") {
           setRecordStatus("confirmed");
           return;
@@ -73,48 +97,144 @@ export default function BookingSuccess() {
     });
   }, [stripeSession, recordStatus]);
 
+  const mailSupportHref = `mailto:${SITE.email}?subject=${encodeURIComponent(
+    `Booking help — ref ${bookingId ?? stripeSession ?? "unknown"}`
+  )}`;
+
   return (
     <>
       <SEO
-        title="Booking Confirmed"
-        description="Thank you for your booking. We'll be in touch shortly to confirm all the magical details."
+        title="Thank you for your booking"
+        description="Your PrincessDream party deposit is received. Save your booking reference and watch for your confirmation email."
         path="/booking-success"
       />
 
-      <section className="relative section-pad overflow-hidden bg-white">
-        <Sparkles count={40} variant="gold" className="opacity-45" />
+      <section className="relative section-pad overflow-hidden bg-magic-gradient min-h-[62vh]">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-lavender/40" />
+        <Sparkles count={56} variant="gold" className="opacity-50" />
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="container-px max-w-3xl mx-auto text-center relative z-10"
+          transition={{ duration: 0.65 }}
+          className="container-px max-w-2xl mx-auto text-center relative z-10"
         >
-          <div className="w-20 h-20 mx-auto rounded-full bg-accent-btn shadow-[0_12px_32px_-10px_rgba(219,39,119,0.45)] grid place-items-center">
-            <WandIcon className="w-10 h-10" />
+          <div className="mx-auto w-24 h-24 rounded-full bg-accent-btn shadow-accent grid place-items-center ring-4 ring-white/80 ring-offset-2 ring-offset-pinkSoft/30">
+            <WandIcon className="w-11 h-11 text-white drop-shadow-sm" />
           </div>
-          <h1 className="heading-display text-3xl sm:text-5xl mt-6 text-ink">
-            Your Booking is{" "}
-            <span className="accent-text">on its way!</span>
+
+          <h1 className="font-display text-3xl sm:text-5xl mt-7 text-ink leading-tight">
+            Thank you —{" "}
+            <span className="bg-gradient-to-r from-pinkDeep via-pinkDeep to-goldDeep bg-clip-text text-transparent">
+              you&apos;re officially on the calendar!
+            </span>
           </h1>
-          <div className="accent-hr mt-5" />
-          <p className="mt-6 text-inkSoft text-base sm:text-lg leading-relaxed">
-            Thank you for choosing PrincessDream. We&apos;ve received your booking
-            request and will be in touch within 24 hours to confirm all the
-            magical details.
+          <p className="accent-hr mt-5 max-w-xs mx-auto" />
+
+          <p className="mt-6 text-ink text-base sm:text-lg leading-relaxed font-medium">
+            Your payment went through beautifully. We&apos;re already looking forward to
+            making your party magical.
           </p>
 
+          {stripeSession && (
+            <div className="mt-8 text-left rounded-3xl border border-pinkBlush/60 bg-white/95 shadow-magical backdrop-blur-sm p-6 sm:p-8 space-y-5">
+              <div className="flex items-center gap-2 justify-center sm:justify-start">
+                <span className="text-xl" aria-hidden>
+                  ✨
+                </span>
+                <h2 className="font-display text-xl sm:text-2xl text-ink text-center sm:text-left">
+                  Save your order details
+                </h2>
+              </div>
+              <p className="text-sm sm:text-base text-inkSoft leading-relaxed">
+                Please <strong className="text-ink">keep a screenshot or note</strong> of
+                the references below. You&apos;ll need them if you email us about this
+                booking.
+              </p>
+
+              <div className="space-y-4 rounded-2xl bg-pinkSoft/50 border border-pinkBlush/40 p-4 sm:p-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-pinkDeep mb-1">
+                    Booking reference
+                  </p>
+                  <p className="font-mono text-xs sm:text-sm text-ink break-all bg-white/90 rounded-lg px-3 py-2 border border-pinkBlush/50">
+                    {bookingId ?? (recordStatus === "pending" ? "Loading…" : "—")}
+                  </p>
+                  {bookingId && (
+                    <button
+                      type="button"
+                      className="mt-2 text-sm font-semibold text-pinkDeep underline underline-offset-2 hover:text-pinkDeep/90"
+                      onClick={() => void copyText("Booking reference", bookingId, showCopyHint)}
+                    >
+                      Copy booking reference
+                    </button>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-pinkDeep mb-1">
+                    Checkout reference
+                  </p>
+                  <p className="font-mono text-[11px] sm:text-xs text-ink break-all bg-white/90 rounded-lg px-3 py-2 border border-pinkBlush/50">
+                    {stripeSession}
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-2 text-sm font-semibold text-pinkDeep underline underline-offset-2 hover:text-pinkDeep/90"
+                    onClick={() =>
+                      void copyText("Checkout reference", stripeSession, showCopyHint)
+                    }
+                  >
+                    Copy checkout reference
+                  </button>
+                </div>
+              </div>
+
+              {copyHint && (
+                <p className="text-center text-sm text-pinkDeep font-medium" role="status">
+                  {copyHint}
+                </p>
+              )}
+
+              <div className="rounded-2xl border border-gold/35 bg-cream/90 px-4 py-4 text-sm text-ink/90 leading-relaxed">
+                <p className="font-semibold text-ink mb-2 text-center sm:text-left">
+                  Confirmation email
+                </p>
+                <p>
+                  We&apos;re sending a <strong>confirmation email</strong> to the address
+                  you used at checkout (check your <strong>inbox and spam</strong> folder).
+                </p>
+                <p className="mt-3">
+                  If nothing arrives within a little while, please email us at{" "}
+                  <a
+                    href={mailSupportHref}
+                    className="text-pinkDeep font-semibold underline underline-offset-2 break-all"
+                  >
+                    {SITE.email}
+                  </a>{" "}
+                  and include your{" "}
+                  <strong className="text-ink">booking reference</strong>
+                  {bookingId ? " above" : " (loading above)"} or your{" "}
+                  <strong className="text-ink">checkout reference</strong> so we can find
+                  you instantly.
+                </p>
+              </div>
+            </div>
+          )}
+
           {stripeSession && recordStatus === "pending" && (
-            <p className="mt-4 text-sm text-inkSoft max-w-md mx-auto">
-              We&apos;re confirming your payment — this usually takes a few seconds. A
-              confirmation email will arrive shortly; check spam if you don&apos;t see
-              it.
+            <p className="mt-6 text-sm text-inkSoft max-w-lg mx-auto bg-white/60 rounded-xl px-4 py-3 border border-pinkBlush/30">
+              We&apos;re confirming your payment — this usually takes a few seconds. Your
+              booking reference will appear above as soon as we&apos;ve linked everything.
             </p>
           )}
           {stripeSession && slowPoll && recordStatus !== "confirmed" && (
-            <p className="mt-4 text-sm text-amber-800 max-w-md mx-auto">
-              Confirmation is taking longer than usual. If you have a Stripe receipt,
-              your payment went through — we&apos;ll email you shortly or you can call{" "}
-              <a href={`tel:${SITE.phoneTel}`} className="text-pinkDeep underline">
+            <p className="mt-4 text-sm text-amber-900 max-w-lg mx-auto bg-amber-50/90 rounded-xl px-4 py-3 border border-amber-200">
+              Confirmation is taking longer than usual. If you have a Stripe receipt, your
+              payment went through — email{" "}
+              <a href={mailSupportHref} className="text-pinkDeep font-semibold underline">
+                {SITE.email}
+              </a>{" "}
+              with your <strong>checkout reference</strong> above, or call{" "}
+              <a href={`tel:${SITE.phoneTel}`} className="text-pinkDeep underline font-semibold">
                 {SITE.phone}
               </a>
               .
@@ -122,55 +242,68 @@ export default function BookingSuccess() {
           )}
 
           {dev && (
-            <div className="mt-6 mx-auto max-w-md p-4 rounded-2xl bg-pinkSoft/60 text-sm text-ink text-left">
-              <strong className="block mb-2">No deposit was taken online.</strong>
+            <div className="mt-8 mx-auto max-w-lg p-5 rounded-2xl bg-white/90 border border-pinkBlush/50 text-sm text-ink text-left shadow-soft">
+              <strong className="block mb-2 text-pinkDeep">Demo visit (no online payment)</strong>
               <p className="mb-2">
-                The <code className="bg-white px-1 rounded text-xs">?dev=1</code> in the
-                address only means the card step was skipped — it does{" "}
-                <em>not</em> mean your whole website is in &quot;developer mode&quot;.
+                The <code className="bg-pinkSoft px-1.5 rounded text-xs">?dev=1</code> in
+                the address means the card step was skipped — it does <em>not</em> put the
+                whole site in developer mode.
               </p>
-              <p className="mb-2">
-                This usually happens when you run the site locally, or when the
-                payment step could not start. On the live site, try{" "}
+              <p>
+                On the live site after a real payment you&apos;ll see your{" "}
+                <strong>booking</strong> and <strong>checkout</strong> references here. Try{" "}
                 <Link to="/book" className="text-pinkDeep underline font-medium">
                   Book again
-                </Link>
-                ; if it keeps happening, call us and we&apos;ll take your deposit over
-                the phone.
+                </Link>{" "}
+                for a full checkout test.
               </p>
             </div>
           )}
 
-          <div className="mt-8 card-magical p-7 text-left">
-            <h2 className="font-display text-xl text-center">What happens next?</h2>
-            <ol className="mt-5 space-y-3 text-sm text-ink/90">
+          <div className="mt-10 card-magical p-7 sm:p-8 text-left border border-pinkBlush/30 shadow-soft bg-white/90">
+            <h2 className="font-display text-xl sm:text-2xl text-center text-ink">
+              What happens next?
+            </h2>
+            <ol className="mt-6 space-y-4 text-sm sm:text-base text-ink/90">
               <li className="flex gap-3">
-                <span className="w-6 h-6 grid place-items-center rounded-full bg-accent-btn text-white text-xs font-bold flex-shrink-0">
+                <span className="w-8 h-8 shrink-0 grid place-items-center rounded-full bg-accent-btn text-white text-sm font-bold shadow-accent">
                   1
                 </span>
-                We&apos;ll email you a personal confirmation with all your details.
+                <span>
+                  <strong className="text-ink">Your inbox sparkles next</strong> — look for
+                  our confirmation with every party detail we have on file.
+                </span>
               </li>
               <li className="flex gap-3">
-                <span className="w-6 h-6 grid place-items-center rounded-full bg-accent-btn text-white text-xs font-bold flex-shrink-0">
+                <span className="w-8 h-8 shrink-0 grid place-items-center rounded-full bg-accent-btn text-white text-sm font-bold shadow-accent">
                   2
                 </span>
-                We&apos;ll send a friendly reminder a few days before the big day.
+                <span>
+                  <strong className="text-ink">A gentle reminder</strong> closer to the big
+                  day so the magic stays stress-free.
+                </span>
               </li>
               <li className="flex gap-3">
-                <span className="w-6 h-6 grid place-items-center rounded-full bg-accent-btn text-white text-xs font-bold flex-shrink-0">
+                <span className="w-8 h-8 shrink-0 grid place-items-center rounded-full bg-accent-btn text-white text-sm font-bold shadow-accent">
                   3
                 </span>
-                Your princess arrives ready to make magical memories!
+                <span>
+                  <strong className="text-ink">Showtime!</strong> Your princess arrives
+                  ready to celebrate.
+                </span>
               </li>
             </ol>
           </div>
 
-          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
             <Link to="/" className="btn-primary">
               Back to Home
             </Link>
             <a href={`tel:${SITE.phoneTel}`} className="btn-secondary">
               Call {SITE.phone}
+            </a>
+            <a href={mailSupportHref} className="btn-secondary">
+              Email us
             </a>
           </div>
         </motion.div>
