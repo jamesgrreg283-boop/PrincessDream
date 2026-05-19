@@ -5,12 +5,17 @@ import SEO from "../components/SEO";
 import Sparkles from "../components/Sparkles";
 import { WandIcon } from "../components/CrownIcon";
 import { SITE } from "../data/site";
+import {
+  fireGoogleAdsDepositConversion,
+  isGoogleAdsConversionConfigured,
+} from "../lib/googleAds";
 
 type StatusPayload = {
   status?: string;
   bookingId?: string;
   partyDate?: string;
   partyTime?: string;
+  depositAmount?: number | null;
 };
 
 async function copyText(label: string, text: string, onDone: (msg: string) => void) {
@@ -30,6 +35,7 @@ export default function BookingSuccess() {
     stripeSession ? "unknown" : "confirmed"
   );
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [depositAmount, setDepositAmount] = useState<number | null>(null);
   const [slowPoll, setSlowPoll] = useState(false);
   const [copyHint, setCopyHint] = useState<string | null>(null);
   const ensureEmailsOnce = useRef(false);
@@ -63,6 +69,9 @@ export default function BookingSuccess() {
         const j = (await r.json()) as StatusPayload;
         if (cancelled) return;
         if (j.bookingId) setBookingId(j.bookingId);
+        if (typeof j.depositAmount === "number" && Number.isFinite(j.depositAmount)) {
+          setDepositAmount(j.depositAmount);
+        }
         if (j.status === "confirmed") {
           setRecordStatus("confirmed");
           return;
@@ -96,6 +105,19 @@ export default function BookingSuccess() {
       /* non-blocking backup if Stripe webhook was delayed or Resend failed once */
     });
   }, [stripeSession, recordStatus]);
+
+  useEffect(() => {
+    if (!stripeSession || recordStatus !== "confirmed") return;
+    if (!isGoogleAdsConversionConfigured()) return;
+    if (depositAmount == null || !(depositAmount > 0)) return;
+    const storageKey = `apd_gads_deposit_conv:${stripeSession}`;
+    if (sessionStorage.getItem(storageKey)) return;
+    sessionStorage.setItem(storageKey, "1");
+    fireGoogleAdsDepositConversion({
+      value: depositAmount,
+      transactionId: stripeSession,
+    });
+  }, [stripeSession, recordStatus, depositAmount]);
 
   const mailSupportHref = `mailto:${SITE.email}?subject=${encodeURIComponent(
     `Booking help — ref ${bookingId ?? stripeSession ?? "unknown"}`

@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
   const { data, error } = await supabase
     .from("bookings")
-    .select("id, status, party_date, party_start_time")
+    .select("id, status, party_date, party_start_time, deposit_amount")
     .eq("stripe_session_id", sessionId)
     .maybeSingle();
 
@@ -51,5 +51,9 @@ export default async function handler(req, res) {
     bookingId: data.id,
     partyDate: data.party_date,
     partyTime: data.party_start_time,
+    depositAmount:
+      typeof data.deposit_amount === "number" && Number.isFinite(data.deposit_amount)
+        ? data.deposit_amount
+        : null,
   });
 }
