@@ -214,6 +214,7 @@ export default async function handler(req, res) {
   try {
     session = await stripe.checkout.sessions.create({
       mode: "payment",
+      allow_promotion_codes: true,
       customer_email: email,
       line_items,
       success_url: `${base}/booking-success?session_id={CHECKOUT_SESSION_ID}`,
