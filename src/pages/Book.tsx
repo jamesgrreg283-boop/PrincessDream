@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import SEO from "../components/SEO";
 import PageHeader from "../components/PageHeader";
 import Sparkles from "../components/Sparkles";
+import AvailabilityCheckingOverlay, {
+  AVAILABILITY_CHECK_MIN_MS,
+  formatPartyDateLabel,
+} from "../components/AvailabilityCheckingOverlay";
 import { PACKAGES, depositFor, remainingFor } from "../data/packages";
 import { CHARACTERS } from "../data/characters";
 import { SITE, TRUST_BADGES } from "../data/site";
@@ -11,6 +15,16 @@ import TrustBadges from "../components/TrustBadges";
 import MagicalDateField from "../components/MagicalDateField";
 import MagicalListbox from "../components/MagicalListbox";
 import { redirectToDeposit, type BookingPayload, CHECKOUT_ERROR_STORAGE_KEY } from "../lib/stripe";
+import {
+  SLOT_HOLD_MINUTES,
+  clearBookingDraft,
+  formatCountdown,
+  holdRemainingMs as getHoldRemainingMs,
+  isDraftValid,
+  loadBookingDraft,
+  normaliseDraftForm,
+  saveBookingDraft,
+} from "../lib/bookingDraft";
 import {
   DEFAULT_OCCASION,
   OCCASION_OPTIONS,
@@ -34,6 +48,22 @@ const PARTY_START_TIME_OPTIONS: { value: string; label: string }[] = (() => {
 
 const PARTY_TIME_VALUE_SET = new Set(PARTY_START_TIME_OPTIONS.map((o) => o.value));
 
+/** Nearby slot labels shown during the loading-screen shuffle step (excludes user's time). */
+function buildShuffleTimeLabels(selectedValue: string, selectedLabel: string): string[] {
+  const idx = PARTY_START_TIME_OPTIONS.findIndex((o) => o.value === selectedValue);
+  if (idx < 0) {
+    return ["10:00 am", "12:30 pm", "2:00 pm", "3:30 pm"].filter((l) => l !== selectedLabel);
+  }
+  const labels: string[] = [];
+  for (const off of [3, -2, 2, -3, 4, -1, 5, 1, -4]) {
+    const slot = PARTY_START_TIME_OPTIONS[idx + off];
+    if (slot && slot.label !== selectedLabel && !labels.includes(slot.label)) {
+      labels.push(slot.label);
+    }
+  }
+  return labels.slice(0, 5);
+}
+
 const PARTY_TIME_LIST_OPTIONS = [
   { value: "", label: "Select start time" },
   ...PARTY_START_TIME_OPTIONS,
@@ -49,6 +79,8 @@ const PACKAGE_LIST_OPTIONS = PACKAGES.map((p) => ({
   value: p.slug,
   label: `${p.name} — £${p.price}`,
 }));
+
+type BookingFlowStep = "pick-slot" | "checking" | "form";
 
 function localDateISO(date = new Date()): string {
   const y = date.getFullYear();
@@ -84,9 +116,40 @@ export default function Book() {
   const [checkoutErrorBanner, setCheckoutErrorBanner] = useState<string | null>(null);
   const [noticeBanner, setNoticeBanner] = useState<string | null>(null);
   const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
+  const [flowStep, setFlowStep] = useState<BookingFlowStep>("pick-slot");
+  const [slotCheckError, setSlotCheckError] = useState<string | null>(null);
+  const [slotConfirmedAt, setSlotConfirmedAt] = useState<number | null>(null);
+  const [holdRemainingMs, setHoldRemainingMs] = useState(SLOT_HOLD_MINUTES * 60 * 1000);
 
   const pkgParam = searchParams.get("package");
   const charParam = searchParams.get("character");
+
+  /** Restore in-progress booking after browsing other pages (same tab). */
+  useEffect(() => {
+    const draft = loadBookingDraft();
+    if (!isDraftValid(draft)) return;
+    const id = requestAnimationFrame(() => {
+      setForm(normaliseDraftForm(draft.form));
+      setSlotConfirmedAt(draft.slotConfirmedAt);
+      setHoldRemainingMs(getHoldRemainingMs(draft.slotConfirmedAt));
+      setFlowStep("form");
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  useEffect(() => {
+    if (flowStep !== "form" || !slotConfirmedAt) return;
+    if (getHoldRemainingMs(slotConfirmedAt) <= 0) {
+      clearBookingDraft();
+      return;
+    }
+    saveBookingDraft({
+      version: 1,
+      form: { ...form },
+      slotConfirmedAt,
+      flowStep: "form",
+    });
+  }, [form, flowStep, slotConfirmedAt]);
 
   useEffect(() => {
     if (searchParams.get("checkout_error") !== "1") return;
@@ -188,6 +251,22 @@ export default function Book() {
     [occupiedTimes]
   );
 
+  const selectedPartyTimeLabel = useMemo(
+    () =>
+      PARTY_START_TIME_OPTIONS.find((o) => o.value === form.partyTime)?.label ?? form.partyTime,
+    [form.partyTime]
+  );
+
+  const selectedPartyDateLabel = useMemo(
+    () => formatPartyDateLabel(form.partyDate),
+    [form.partyDate]
+  );
+
+  const shuffleTimeLabels = useMemo(
+    () => buildShuffleTimeLabels(form.partyTime, selectedPartyTimeLabel),
+    [form.partyTime, selectedPartyTimeLabel]
+  );
+
   useEffect(() => {
     if (!form.partyDate) {
       const id = requestAnimationFrame(() => setOccupiedTimes([]));
@@ -221,11 +300,89 @@ export default function Book() {
     return () => cancelAnimationFrame(id);
   }, [occupiedTimes, form.partyTime]);
 
+  useEffect(() => {
+    if (!slotConfirmedAt || flowStep !== "form") return;
+    const endAt = slotConfirmedAt + SLOT_HOLD_MINUTES * 60 * 1000;
+    let frame = 0;
+    const tick = () => {
+      const remaining = Math.max(0, endAt - Date.now());
+      setHoldRemainingMs(remaining);
+      if (remaining <= 0) {
+        clearBookingDraft();
+        setSlotConfirmedAt(null);
+        setNoticeBanner(
+          "Your reservation window has ended. Please check availability again to confirm your slot before paying."
+        );
+        return;
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [slotConfirmedAt, flowStep]);
+
   const deposit = depositFor(selectedPackage);
   const balance = remainingFor(selectedPackage);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const validatePickSlot = (): boolean => {
+    const e: Partial<Record<keyof FormState, string>> = {};
+    if (!form.partyDate) e.partyDate = "Please choose a date";
+    if (!form.partyTime) e.partyTime = "Please choose a start time";
+    else if (!PARTY_TIME_VALUE_SET.has(form.partyTime))
+      e.partyTime = "Please choose a time between 9:00 am and 4:00 pm";
+    else if (occupiedTimes.includes(form.partyTime))
+      e.partyTime = "That time is already booked — pick another slot";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleCheckSlot = async () => {
+    if (!validatePickSlot()) return;
+    setSlotCheckError(null);
+    setFlowStep("checking");
+
+    const minDelay = new Promise((resolve) =>
+      window.setTimeout(resolve, AVAILABILITY_CHECK_MIN_MS)
+    );
+    const checkPromise = fetch(
+      `${window.location.origin}/api/check-availability?date=${encodeURIComponent(form.partyDate)}&time=${encodeURIComponent(form.partyTime)}&packageSlug=${encodeURIComponent(form.packageSlug)}`
+    );
+
+    try {
+      const [, avRes] = await Promise.all([minDelay, checkPromise]);
+      let avJson: { available?: boolean; error?: string } = {};
+      try {
+        avJson = (await avRes.json()) as { available?: boolean; error?: string };
+      } catch {
+        /* non-JSON */
+      }
+      if (!avRes.ok || avJson.available === false) {
+        setFlowStep("pick-slot");
+        setSlotCheckError(
+          avJson.error ??
+            "That date and time is no longer available. Please choose another slot."
+        );
+        setErrors((prev) => ({
+          ...prev,
+          partyTime:
+            avJson.error ??
+            "That date and time is no longer available. Please choose another slot.",
+        }));
+        return;
+      }
+      setSlotConfirmedAt(Date.now());
+      setHoldRemainingMs(SLOT_HOLD_MINUTES * 60 * 1000);
+      setFlowStep("form");
+    } catch {
+      /* API unreachable (e.g. local dev) — server enforces on checkout */
+      setSlotConfirmedAt(Date.now());
+      setHoldRemainingMs(SLOT_HOLD_MINUTES * 60 * 1000);
+      setFlowStep("form");
+    }
+  };
 
   const validate = (): boolean => {
     const e: Partial<Record<keyof FormState, string>> = {};
@@ -316,6 +473,17 @@ export default function Book() {
 
   return (
     <>
+      <AnimatePresence>
+        {flowStep === "checking" && (
+          <AvailabilityCheckingOverlay
+            key="availability-check"
+            partyDateLabel={selectedPartyDateLabel}
+            partyTimeLabel={selectedPartyTimeLabel || "your chosen time"}
+            shuffleTimeLabels={shuffleTimeLabels}
+          />
+        )}
+      </AnimatePresence>
+
       <SEO
         title="Book a Princess Party | PrincessDream Coventry"
         description="Book a magical princess party online. Quick form, secure deposit, instant confirmation. Coventry, Leamington Spa, Bedworth, Nuneaton & Kenilworth."
@@ -329,7 +497,11 @@ export default function Book() {
             Let's Make <span className="accent-text">Magic</span> Happen
           </>
         }
-        subtitle="Fill out the form below to request your magical party. We'll respond quickly to confirm details and secure your date with your online deposit."
+        subtitle={
+          flowStep === "pick-slot" || flowStep === "checking"
+            ? "First, choose your party date and start time — we'll check the calendar and then you can complete your booking."
+            : "Fill out the form below to request your magical party. We'll respond quickly to confirm details and secure your date with your online deposit."
+        }
       />
 
       <section className="section-pad bg-white relative overflow-hidden">
@@ -344,7 +516,7 @@ export default function Book() {
             className="card-magical min-w-0 p-5 sm:p-8 lg:p-10 space-y-5"
             noValidate
           >
-            {checkoutErrorBanner && (
+            {checkoutErrorBanner && flowStep === "form" && (
               <div
                 role="alert"
                 className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-sm"
@@ -353,7 +525,7 @@ export default function Book() {
                 {checkoutErrorBanner}
               </div>
             )}
-            {noticeBanner && (
+            {noticeBanner && flowStep === "form" && (
               <div
                 role="status"
                 className="p-4 rounded-xl bg-sky-50 border border-sky-200 text-sky-950 text-sm"
@@ -361,6 +533,94 @@ export default function Book() {
                 {noticeBanner}
               </div>
             )}
+
+            {flowStep === "pick-slot" && (
+              <>
+                <h2 className="heading-display text-2xl sm:text-3xl">Check Availability</h2>
+                <p className="text-sm text-inkSoft -mt-1 leading-relaxed">
+                  Parties can be booked any day of the week. Pick when the visit{" "}
+                  <strong className="font-semibold text-ink">starts</strong> — arrivals from 9:00
+                  am to 4:00 pm in 15-minute steps.
+                </p>
+                {slotCheckError && (
+                  <div
+                    role="alert"
+                    className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-sm"
+                  >
+                    {slotCheckError}
+                  </div>
+                )}
+                <div className="grid sm:grid-cols-2 gap-5">
+                  <Field label="Party Date" error={errors.partyDate} htmlFor="partyDate">
+                    <MagicalDateField
+                      id="partyDate"
+                      min={today}
+                      value={form.partyDate}
+                      onChange={(iso) => update("partyDate", iso)}
+                      invalid={!!errors.partyDate}
+                    />
+                  </Field>
+                  <Field label="Party Start Time" error={errors.partyTime} htmlFor="partyTime">
+                    <MagicalListbox
+                      id="partyTime"
+                      value={form.partyTime}
+                      onChange={(v) => update("partyTime", v)}
+                      options={[...partyTimeOptions]}
+                      placeholder="Select start time"
+                      invalid={!!errors.partyTime}
+                    />
+                    <p className="mt-1.5 text-xs text-inkSoft leading-snug">
+                      Times shown in grey are already booked. Pick a free slot to continue.
+                    </p>
+                  </Field>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleCheckSlot()}
+                  className="btn-primary w-full justify-center text-base py-4"
+                >
+                  Check Availability
+                </button>
+              </>
+            )}
+
+            {flowStep === "form" && slotConfirmedAt && (
+              <div
+                role="status"
+                className="p-4 sm:p-5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-sm space-y-3"
+              >
+                <p className="font-display text-lg text-emerald-900">
+                  Great news — your chosen time is available!
+                </p>
+                <p className="leading-relaxed">
+                  Fill in the details below to secure your booking with a deposit.
+                </p>
+                <SlotHoldTimer remainingMs={holdRemainingMs} />
+                <p className="text-emerald-900/90 leading-relaxed text-xs sm:text-sm">
+                  This date and time is popular — other families may be looking at the same slot.
+                  Complete your booking before the timer ends to keep your chosen time.
+                </p>
+                <p className="text-emerald-900/80 text-xs sm:text-sm leading-relaxed border-t border-emerald-200/80 pt-2">
+                  Want to compare packages or characters first?{" "}
+                  <Link to="/packages" className="text-pinkDeep font-semibold underline">
+                    Browse packages
+                  </Link>
+                  ,{" "}
+                  <Link to="/characters" className="text-pinkDeep font-semibold underline">
+                    meet our princesses
+                  </Link>
+                  , or use the menu — your form, date, time, and{" "}
+                  <strong className="font-semibold tabular-nums">
+                    {formatCountdown(holdRemainingMs)}
+                  </strong>{" "}
+                  timer stay saved. Tap <strong className="font-semibold">Resume booking</strong> on
+                  any page to return.
+                </p>
+              </div>
+            )}
+
+            {flowStep === "form" && (
+              <>
             <h2 className="heading-display text-2xl sm:text-3xl">Your Details</h2>
 
             <Field label="Parent Name" error={errors.parentName} htmlFor="parentName">
@@ -599,15 +859,47 @@ export default function Book() {
             <p className="text-xs text-center text-inkSoft">
               Secure payments by Stripe. Your details are never shared.
             </p>
+              </>
+            )}
           </motion.form>
 
           {/* ============================ SUMMARY ============================ */}
           {/* Sidebar: stick the whole column so summary + chat never overlap */}
           <aside className="min-w-0 space-y-6 lg:sticky lg:top-24 lg:z-10 lg:self-start lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto lg:overscroll-contain">
+            {flowStep === "pick-slot" || flowStep === "checking" ? (
+              <div className="card-magical p-5 sm:p-7">
+                <div className="heading-eyebrow">Step 1</div>
+                <h3 className="font-display text-2xl mt-2">Choose date &amp; time</h3>
+                <p className="text-sm text-inkSoft mt-2 leading-relaxed">
+                  We use the same live calendar as our team — unavailable slots are greyed out so
+                  you only pick times that are genuinely free.
+                </p>
+                <div className="mt-6 pt-6 border-t border-pinkSoft">
+                  <TrustBadges items={TRUST_BADGES} />
+                </div>
+              </div>
+            ) : (
             <div className="card-magical p-5 sm:p-7">
               <div className="heading-eyebrow">Booking Summary</div>
               <h3 className="font-display text-2xl mt-2">{selectedPackage.name}</h3>
               <p className="text-sm text-inkSoft mt-1">{selectedPackage.tagline}</p>
+
+              {(form.partyDate || form.partyTime) && (
+                <div className="mt-4 p-3 rounded-xl bg-pinkPale/50 border border-pinkSoft text-sm space-y-1">
+                  {form.partyDate && (
+                    <p>
+                      <span className="text-inkSoft">Date: </span>
+                      <span className="font-medium text-ink">{selectedPartyDateLabel}</span>
+                    </p>
+                  )}
+                  {form.partyTime && (
+                    <p>
+                      <span className="text-inkSoft">Start: </span>
+                      <span className="font-medium text-ink">{selectedPartyTimeLabel}</span>
+                    </p>
+                  )}
+                </div>
+              )}
 
               <ul className="mt-5 space-y-2 text-sm">
                 {selectedPackage.includes.slice(0, 5).map((i) => (
@@ -638,6 +930,7 @@ export default function Book() {
                 balance is paid in cash on the day.
               </p>
             </div>
+            )}
 
             <div className="card-magical p-6">
               <h4 className="font-display text-lg">Prefer to chat?</h4>
@@ -710,6 +1003,65 @@ function Row({
     >
       <span className={highlight ? "" : "text-inkSoft"}>{label}</span>
       <span>{value}</span>
+    </div>
+  );
+}
+
+function SlotHoldTimer({ remainingMs }: { remainingMs: number }) {
+  const totalMs = SLOT_HOLD_MINUTES * 60 * 1000;
+  const clampedMs = Math.max(0, Math.min(totalMs, remainingMs));
+  const pct = (clampedMs / totalMs) * 100;
+  const urgent = clampedMs <= 5 * 60 * 1000;
+  const displaySec = Math.ceil(clampedMs / 1000);
+  const minutes = Math.floor(displaySec / 60);
+  const seconds = displaySec % 60;
+
+  const shellClass = urgent
+    ? "border-amber-400 bg-gradient-to-br from-amber-50 via-white to-amber-50/80 shadow-[0_8px_28px_-6px_rgba(217,119,6,0.35)]"
+    : "border-pinkDeep bg-gradient-to-br from-pinkPale via-white to-pinkPale/40 shadow-[0_8px_28px_-6px_rgba(216,27,96,0.3)]";
+
+  const digitClass = urgent ? "text-amber-700" : "text-pinkDeep";
+  const labelClass = urgent ? "text-amber-800" : "text-pinkDeep";
+
+  const digits = (
+    <div
+      className={`font-display font-bold tabular-nums tracking-tight leading-none text-5xl sm:text-6xl ${digitClass}`}
+      aria-hidden
+    >
+      <span>{minutes}</span>
+      <span className="mx-0.5 sm:mx-1 opacity-80">:</span>
+      <span>{String(seconds).padStart(2, "0")}</span>
+    </div>
+  );
+
+  return (
+    <div
+      className={`rounded-2xl border-2 p-4 sm:p-5 ${shellClass}`}
+      aria-label={`${minutes} minutes and ${seconds} seconds left to secure your slot`}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+        <div className="flex-1 text-center sm:text-left">
+          <p className={`font-cinzel uppercase tracking-[0.22em] text-xs font-semibold ${labelClass}`}>
+            Secure your slot
+          </p>
+          <p className="mt-1 text-sm text-ink/80 leading-relaxed">
+            Complete your booking before this countdown finishes.
+          </p>
+          <div className="mt-3 h-2 rounded-full bg-white/80 overflow-hidden border border-pinkSoft/80">
+            <div
+              className={`h-full w-full rounded-full origin-left will-change-transform ${urgent ? "bg-amber-500" : "bg-pinkDeep"}`}
+              style={{ transform: `scaleX(${pct / 100})` }}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center shrink-0 min-w-[9rem] px-4 py-3 rounded-xl bg-white/90 border border-white shadow-inner">
+          <span className={`text-[0.65rem] font-semibold uppercase tracking-wider ${labelClass}`}>
+            Time remaining
+          </span>
+          {digits}
+          <span className="text-xs text-inkSoft mt-1.5">min : sec</span>
+        </div>
+      </div>
     </div>
   );
 }

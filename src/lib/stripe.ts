@@ -22,6 +22,7 @@
 
 import type { Package } from "../data/packages";
 import type { OccasionType } from "../data/occasions";
+import { clearBookingDraft } from "./bookingDraft";
 
 /** Shown on `/book?checkout_error=1` after a failed Checkout Session POST. */
 export const CHECKOUT_ERROR_STORAGE_KEY = "apd_checkout_error";
@@ -96,7 +97,7 @@ export async function redirectToDeposit(
   // 1. Payment Link
   const link = STRIPE_PAYMENT_LINKS[pkg.slug];
   if (link) {
-    // Persist booking locally for follow-up after Stripe returns.
+    clearBookingDraft();
     sessionStorage.setItem("apd_booking", JSON.stringify(booking));
     window.location.href = link;
     return;
@@ -106,6 +107,7 @@ export async function redirectToDeposit(
   const checkoutUrl = checkoutSessionUrl();
   if (checkoutUrl) {
     try {
+      clearBookingDraft();
       sessionStorage.setItem("apd_booking", JSON.stringify(booking));
       const res = await fetch(checkoutUrl, {
         method: "POST",
@@ -160,6 +162,7 @@ export async function redirectToDeposit(
   }
 
   // 3. Local fallback (no API URL — e.g. `npm run dev` without env)
+  clearBookingDraft();
   sessionStorage.setItem("apd_booking", JSON.stringify(booking));
   window.location.href = "/booking-success?dev=1";
 }

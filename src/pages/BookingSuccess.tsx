@@ -9,6 +9,7 @@ import {
   fireGoogleAdsDepositConversion,
   isGoogleAdsConversionConfigured,
 } from "../lib/googleAds";
+import { clearBookingDraft } from "../lib/bookingDraft";
 
 type StatusPayload = {
   status?: string;
@@ -28,6 +29,10 @@ async function copyText(label: string, text: string, onDone: (msg: string) => vo
 }
 
 export default function BookingSuccess() {
+  useEffect(() => {
+    clearBookingDraft();
+  }, []);
+
   const [params] = useSearchParams();
   const stripeSession = params.get("session_id");
   const dev = params.get("dev") === "1" && !stripeSession;

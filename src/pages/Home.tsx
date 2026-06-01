@@ -75,18 +75,30 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3 }}
-            className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="mt-10 w-full max-w-lg sm:max-w-3xl mx-auto px-1 sm:px-0"
           >
-            <Link to="/book" className="btn-primary text-base">
-              <WandIcon className="w-5 h-5" />
-              Book Your Magical Party
-            </Link>
-            <Link
-              to="/packages"
-              className="btn-secondary text-base bg-white/90 hover:bg-white"
-            >
-              View Packages
-            </Link>
+            <div className="flex flex-col sm:flex-row items-stretch justify-center gap-3">
+              <Link
+                to="/book"
+                className="btn-primary text-base w-full sm:flex-1 min-h-[3rem] px-5 justify-center"
+              >
+                <WandIcon className="w-5 h-5 shrink-0" />
+                Check Availability
+              </Link>
+              <Link
+                to="/characters"
+                className="btn-secondary text-base w-full sm:flex-1 min-h-[3rem] px-5 justify-center bg-white/95 hover:bg-white border-white/90 text-pinkDeep shadow-soft"
+              >
+                <CrownIcon className="w-5 h-5 shrink-0" />
+                Characters
+              </Link>
+              <Link
+                to="/#packages"
+                className="btn-secondary text-base w-full sm:flex-1 min-h-[3rem] px-5 justify-center bg-white/90 hover:bg-white border-white/80"
+              >
+                See Packages &amp; Pricing
+              </Link>
+            </div>
           </motion.div>
 
           <div className="mt-12">
@@ -126,15 +138,24 @@ export default function Home() {
               <CharacterCard key={c.slug} character={c} index={i} />
             ))}
           </div>
-          <div className="text-center mt-12">
-            <Link to="/characters" className="btn-secondary">
+          <div className="mt-12 w-full max-w-md sm:max-w-xl mx-auto flex flex-col sm:flex-row items-stretch justify-center gap-3">
+            <Link
+              to="/characters"
+              className="btn-primary text-base w-full sm:flex-1 min-h-[3rem] justify-center"
+            >
               View All Characters
+            </Link>
+            <Link
+              to="/book"
+              className="btn-secondary text-base w-full sm:flex-1 min-h-[3rem] justify-center"
+            >
+              Check Availability
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="section-pad bg-white relative overflow-hidden">
+      <section id="packages" className="section-pad bg-white relative overflow-hidden scroll-mt-24">
         <Sparkles count={28} variant="gold" className="opacity-50" />
         <div className="container-px max-w-7xl mx-auto relative z-10">
           <SectionHeading
@@ -152,10 +173,29 @@ export default function Home() {
               <PackageCard key={p.slug} pkg={p} index={i} />
             ))}
           </div>
-          <div className="text-center mt-12">
-            <Link to="/packages" className="btn-secondary">
-              See Full Package Details
-            </Link>
+          <div className="mt-12 w-full max-w-lg sm:max-w-2xl mx-auto">
+            <div className="flex flex-col sm:flex-row items-stretch justify-center gap-3">
+              <Link
+                to="/book"
+                className="btn-primary text-base w-full sm:flex-1 min-h-[3rem] px-5 justify-center"
+              >
+                <WandIcon className="w-5 h-5 shrink-0" />
+                Check Availability
+              </Link>
+              <Link
+                to="/characters"
+                className="btn-secondary text-base w-full sm:flex-1 min-h-[3rem] px-5 justify-center"
+              >
+                <CrownIcon className="w-5 h-5 shrink-0" />
+                Characters
+              </Link>
+              <Link
+                to="/packages"
+                className="btn-secondary text-base w-full sm:flex-1 min-h-[3rem] px-5 justify-center"
+              >
+                See Full Package Details
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -279,12 +319,25 @@ export default function Home() {
               Secure your date with your online deposit and let us bring the magic
               to your child's special day.
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/book" className="btn-primary text-base">
-                <WandIcon className="w-5 h-5" />
-                Book Now
+            <div className="mt-8 w-full max-w-lg sm:max-w-2xl mx-auto flex flex-col sm:flex-row items-stretch justify-center gap-3">
+              <Link
+                to="/book"
+                className="btn-primary text-base w-full sm:flex-1 min-h-[3rem] justify-center"
+              >
+                <WandIcon className="w-5 h-5 shrink-0" />
+                Check Availability
               </Link>
-              <a href={`tel:${SITE.phoneTel}`} className="btn-secondary text-base">
+              <Link
+                to="/characters"
+                className="btn-secondary text-base w-full sm:flex-1 min-h-[3rem] justify-center"
+              >
+                <CrownIcon className="w-5 h-5 shrink-0" />
+                Characters
+              </Link>
+              <a
+                href={`tel:${SITE.phoneTel}`}
+                className="btn-secondary text-base w-full sm:flex-1 min-h-[3rem] justify-center"
+              >
                 Call {SITE.phone}
               </a>
             </div>
