@@ -21,8 +21,8 @@ export const REVIEWS: Review[] = [
     rating: 5,
     date: "April 2025",
     text:
-      "Absolutely magical from start to finish! Elsa was perfect — she sang, she danced, she was so kind with all the children. My daughter said it was the best day of her life.",
-    character: "Elsa",
+      "Absolutely magical from start to finish! Our Snow Queen was perfect — she sang, she danced, she was so kind with all the children. My daughter said it was the best day of her life.",
+    character: "Snow Queen",
   },
   {
     name: "Sarah J.",
@@ -32,7 +32,7 @@ export const REVIEWS: Review[] = [
     date: "March 2025",
     text:
       "Our daughter felt like a real princess. The communication beforehand was fantastic and the entertainer was so professional. We will be booking again next year!",
-    character: "Belle",
+    character: "Princess Beauty",
   },
   {
     name: "Rachel D.",
@@ -41,7 +41,7 @@ export const REVIEWS: Review[] = [
     date: "September 2025",
     text:
       "Professional, punctual and incredible with children. Worth every penny — every child was engaged from the moment she arrived. Thank you for making the day so special.",
-    character: "Rapunzel",
+    character: "Tower Princess",
   },
   {
     name: "Emma P.",
@@ -60,8 +60,8 @@ export const REVIEWS: Review[] = [
     rating: 5,
     date: "January 2025",
     text:
-      "Ariel was wonderful! Stayed in character the whole time, brilliant with all the kids, and the photos are absolutely beautiful. Highly recommended.",
-    character: "Ariel",
+      "Our Mermaid Princess was wonderful! Stayed in character the whole time, brilliant with all the kids, and the photos are absolutely beautiful. Highly recommended.",
+    character: "Mermaid Princess",
   },
   {
     name: "Laura S.",
@@ -70,7 +70,7 @@ export const REVIEWS: Review[] = [
     rating: 5,
     date: "December 2025",
     text:
-      "Anna was so warm, fun and full of energy. The children adored her. Worth every single penny — five stars from a very happy family!",
-    character: "Anna",
+      "Our Snow Princess was so warm, fun and full of energy. The children adored her. Worth every single penny — five stars from a very happy family!",
+    character: "Snow Princess",
   },
 ];

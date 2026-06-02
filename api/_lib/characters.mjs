@@ -1,11 +1,15 @@
 /** Display names for booking emails — mirror `src/data/characters.ts` slugs. */
 const MAP = {
-  belle: "Belle",
-  ariel: "Ariel",
-  elsa: "Elsa",
-  rapunzel: "Rapunzel",
+  "glass-slipper-princess": "Glass Slipper Princess",
+  "sleepy-princess": "Sleepy Princess",
+  belle: "Princess Beauty",
+  rapunzel: "Tower Princess",
+  ariel: "Mermaid Princess",
+  elsa: "Snow Queen",
+  anna: "Snow Princess",
   "fairy-sparkles": "Fairy Sparkles",
-  anna: "Anna",
+  "good-witch": "Glinda — The Good Witch",
+  "movie-barbie": "Movie Barbie",
   surprise: "Surprise me!",
 };
 

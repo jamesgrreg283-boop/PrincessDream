@@ -11,7 +11,7 @@ export default function Characters() {
     <>
       <SEO
         title="Our Princesses | PrincessDream Coventry"
-        description="Meet our magical princess entertainers — Belle, Ariel, Elsa, Rapunzel, Fairy Sparkles and Anna. Book your favourite for parties in Coventry & Warwickshire."
+        description="Meet our magical fairytale entertainers — princesses, fairies, the Good Witch, Movie Barbie and more. Book your favourite for parties in Coventry & Warwickshire."
         path="/characters"
       />
 

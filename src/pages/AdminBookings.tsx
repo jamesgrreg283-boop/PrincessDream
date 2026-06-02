@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import SEO from "../components/SEO";
 import PageHeader from "../components/PageHeader";
 import { PACKAGES } from "../data/packages";
-import { CHARACTERS } from "../data/characters";
+import { CHARACTERS, characterLabelForSlug } from "../data/characters";
 
 const origin = () =>
   typeof window !== "undefined" ? window.location.origin : "";
@@ -615,6 +615,7 @@ export default function AdminBookings() {
                   <th className="py-2 pr-3">Time</th>
                   <th className="py-2 pr-3">Parent</th>
                   <th className="py-2 pr-3">Child</th>
+                  <th className="py-2 pr-3">Princess</th>
                   <th className="py-2 pr-3">Email</th>
                   <th className="py-2 pr-3">Status</th>
                   <th className="py-2 pr-3">Payment</th>
@@ -628,6 +629,9 @@ export default function AdminBookings() {
                     <td className="py-2 pr-3 whitespace-nowrap">{b.party_start_time}</td>
                     <td className="py-2 pr-3">{b.parent_name}</td>
                     <td className="py-2 pr-3">{b.child_name}</td>
+                    <td className="py-2 pr-3 text-xs whitespace-nowrap">
+                      {characterLabelForSlug(b.selected_character)}
+                    </td>
                     <td className="py-2 pr-3 break-all max-w-[9rem]">{b.email}</td>
                     <td className="py-2 pr-3">
                       <select
