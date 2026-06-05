@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /booking-success
 
 Sitemap: https://www.princessdream.co.uk/sitemap.xml

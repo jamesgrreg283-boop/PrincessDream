@@ -9,7 +9,7 @@ export default function NotFound() {
       <SEO
         title="Page Not Found | PrincessDream"
         description="The page you're looking for doesn't exist. Let's get you back to the magic."
-        path="/404"
+        noindex
       />
 
       <section className="relative section-pad overflow-hidden bg-white">

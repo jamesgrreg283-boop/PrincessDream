@@ -9,8 +9,8 @@ export const SITE = {
   phoneTel: "+447871796024",
   email: "princessdreamuk@gmail.com",
   whatsapp: "+447871796024",
-  // Update with the production domain when going live
-  url: "https://aprincessdream.co.uk",
+  /** Canonical production origin — must match sitemap, redirects, and Search Console property. */
+  url: "https://www.princessdream.co.uk",
   serviceArea: "Coventry, Leamington Spa, Bedworth, Nuneaton, Kenilworth",
   copyrightYear: 2026,
   social: {
@@ -19,6 +19,15 @@ export const SITE = {
     tiktok: "#",
   },
 } as const;
+
+/** Absolute URL for OG images, JSON-LD, and canonical fallbacks. */
+export function absoluteSiteUrl(pathOrUrl: string): string {
+  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+    return pathOrUrl;
+  }
+  const path = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+  return `${SITE.url}${path}`;
+}
 
 export const TRUST_BADGES = [
   { label: "DBS Checked", icon: "check" },

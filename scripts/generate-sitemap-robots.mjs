@@ -1,6 +1,6 @@
 /**
  * Writes public/sitemap.xml and public/robots.txt at build time.
- * Canonical host defaults to https://www.princessdream.co.uk (override with SITE_ORIGIN).
+ * Canonical host is read from src/data/site.ts (override with SITE_ORIGIN).
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -10,10 +10,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const publicDir = join(root, "public");
 
+function discoverSiteOrigin() {
+  const sitePath = join(root, "src", "data", "site.ts");
+  const text = readFileSync(sitePath, "utf8");
+  const m = text.match(/url:\s*"([^"]+)"/);
+  return m ? m[1].trim().replace(/\/$/, "") : "https://www.princessdream.co.uk";
+}
+
 const base = (
   process.env.SITE_ORIGIN ||
   process.env.VITE_SITE_ORIGIN ||
-  "https://www.princessdream.co.uk"
+  discoverSiteOrigin()
 )
   .trim()
   .replace(/\/$/, "");
@@ -50,7 +57,6 @@ const staticPaths = [
   { loc: "/gallery", priority: "0.75", changefreq: "monthly" },
   { loc: "/reviews", priority: "0.75", changefreq: "monthly" },
   { loc: "/faq", priority: "0.75", changefreq: "monthly" },
-  { loc: "/contact", priority: "0.9", changefreq: "monthly" },
   { loc: "/book", priority: "0.95", changefreq: "weekly" },
   { loc: "/areas", priority: "0.85", changefreq: "monthly" },
   { loc: "/privacy", priority: "0.3", changefreq: "yearly" },
@@ -85,8 +91,10 @@ ${urlEntries}
 
 const robots = `User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /booking-success
 
-Sitemap: https://www.princessdream.co.uk/sitemap.xml
+Sitemap: ${base}/sitemap.xml
 `;
 
 writeFileSync(join(publicDir, "sitemap.xml"), sitemap, "utf8");

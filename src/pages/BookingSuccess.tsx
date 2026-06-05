@@ -134,6 +134,7 @@ export default function BookingSuccess() {
         title="Thank you for your booking"
         description="Your PrincessDream party deposit is received. Save your booking reference and watch for your confirmation email."
         path="/booking-success"
+        noindex
       />
 
       <section className="relative overflow-hidden bg-magic-gradient py-10 sm:py-12 lg:py-14">

@@ -6,12 +6,32 @@ import { AREAS } from "../data/areas";
 import { PACKAGES } from "../data/packages";
 import PackageCard from "../components/PackageCard";
 import TrustBadges from "../components/TrustBadges";
-import { TRUST_BADGES } from "../data/site";
+import { SITE, TRUST_BADGES } from "../data/site";
 
 export default function AreaDetail() {
   const { slug } = useParams();
   const area = AREAS.find((a) => a.slug === slug);
   if (!area) return <Navigate to="/areas" replace />;
+
+  const areaSchema = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: area.keyword,
+    description: area.intro,
+    url: `${SITE.url}/areas/${area.slug}`,
+    provider: {
+      "@type": "LocalBusiness",
+      "@id": `${SITE.url}/#localbusiness`,
+      name: SITE.name,
+      url: SITE.url,
+      telephone: SITE.phoneTel,
+      email: SITE.email,
+    },
+    areaServed: {
+      "@type": "City",
+      name: area.name,
+    },
+  };
 
   return (
     <>
@@ -19,6 +39,7 @@ export default function AreaDetail() {
         title={`${area.keyword} | PrincessDream`}
         description={`${area.intro.substring(0, 155)}`}
         path={`/areas/${area.slug}`}
+        schema={areaSchema}
       />
 
       <PageHeader
