@@ -121,8 +121,21 @@ export default function Footer() {
       </div>
 
       <div className="container-px max-w-7xl mx-auto pb-10 -mt-2 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-inkSoft">
-        <div>
-          © {SITE.copyrightYear} {SITE.name}. All rights reserved.
+        <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+          <span>
+            © {SITE.copyrightYear} {SITE.name}. All rights reserved.
+          </span>
+          <span className="hidden sm:inline text-inkSoft/50" aria-hidden>
+            ·
+          </span>
+          <a
+            href="https://www.myfreeweb.co.uk/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-pinkDeep transition-colors"
+          >
+            Website by MyFreeWeb
+          </a>
         </div>
         <div className="flex gap-5">
           <Link to="/privacy" className="hover:text-pinkDeep">
