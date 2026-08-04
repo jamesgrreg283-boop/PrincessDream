@@ -28,6 +28,16 @@ export const CHARACTERS: Character[] = [
     objectPosition: "center 20%",
   },
   {
+    slug: "belle",
+    name: "Princess Beauty",
+    shortDesc:
+      "A book-loving princess who finds beauty in every story — and in every child she meets.",
+    bio: "Princess Beauty adores tales of adventure and friendship. From storytime to graceful waltzes, she brings warmth, kindness, and a sprinkle of enchantment to every celebration. Children love singing along and twirling in her golden ballroom dance.",
+    image: "/characters/belle.png",
+    color: "#F1D87A",
+    objectPosition: "center 20%",
+  },
+  {
     slug: "rapunzel",
     name: "Tower Princess",
     shortDesc:
@@ -84,7 +94,6 @@ const RETIRED_CHARACTER_LABELS: Record<string, string> = {
   "sleepy-princess": "Sleepy Princess",
   "good-witch": "Glinda — The Good Witch",
   "movie-barbie": "Movie Barbie",
-  belle: "Princess Beauty",
 };
 
 /** Friendly label for booking slugs (admin table, emails on server use `api/_lib/characters.mjs`). */

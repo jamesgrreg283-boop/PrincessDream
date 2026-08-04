@@ -16,6 +16,7 @@ const ALLOWED_OCCASIONS = new Set(Object.keys(OCCASION_LABELS));
 /** Bookable character slugs — keep in sync with src/data/characters.ts */
 const ALLOWED_CHARACTERS = new Set([
   "glass-slipper-princess",
+  "belle",
   "rapunzel",
   "ariel",
   "elsa",
