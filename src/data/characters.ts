@@ -28,16 +28,6 @@ export const CHARACTERS: Character[] = [
     objectPosition: "center 20%",
   },
   {
-    slug: "sleepy-princess",
-    name: "Sleepy Princess",
-    shortDesc:
-      "A dreamy princess with a gentle spirit and a gift for peaceful, enchanting celebrations.",
-    bio: "The Sleepy Princess drifts in with soft songs, calming games, and a warm fairytale presence that delights younger children. She creates a relaxed, magical atmosphere where every child feels safe, special, and celebrated.",
-    image: "/characters/sleepy-princess.png",
-    color: "#D4C4E8",
-    objectPosition: "center 20%",
-  },
-  {
     slug: "belle",
     name: "Princess Beauty",
     shortDesc:
@@ -97,27 +87,14 @@ export const CHARACTERS: Character[] = [
     color: "#F3E5F5",
     objectPosition: "center 30%",
   },
-  {
-    slug: "good-witch",
-    name: "Glinda — The Good Witch",
-    shortDesc:
-      "A sparkling enchantress in a flowing pink gown — wand, wishes, and wonder for every guest.",
-    bio: "The Good Witch glides in with a star-topped wand and a gown that shimmers like rose-gold magic. She leads wish-making, gentle spells of kindness, and a celebration that feels straight out of a storybook kingdom.",
-    image: "/characters/good-witch.png",
-    color: "#F8BBD9",
-    objectPosition: "center 18%",
-  },
-  {
-    slug: "movie-barbie",
-    name: "Movie Barbie",
-    shortDesc:
-      "Iconic pink-checkered style, sunny confidence, and party fun from the moment she arrives.",
-    bio: "Movie Barbie brings classic checkered charm, upbeat games, and photo-perfect moments. Children love her playful energy, stylish flair, and the feeling that anything is possible at their special celebration.",
-    image: "/characters/movie-barbie.png",
-    color: "#F48FB1",
-    objectPosition: "center 22%",
-  },
 ];
+
+/** Labels for retired characters (kept so older bookings still display nicely). */
+const RETIRED_CHARACTER_LABELS: Record<string, string> = {
+  "sleepy-princess": "Sleepy Princess",
+  "good-witch": "Glinda — The Good Witch",
+  "movie-barbie": "Movie Barbie",
+};
 
 /** Friendly label for booking slugs (admin table, emails on server use `api/_lib/characters.mjs`). */
 export function characterLabelForSlug(slug: string | null | undefined): string {
@@ -126,5 +103,5 @@ export function characterLabelForSlug(slug: string | null | undefined): string {
   if (k === "surprise") return "Surprise me!";
   const fromList = CHARACTERS.find((c) => c.slug === k);
   if (fromList) return fromList.name;
-  return slug;
+  return RETIRED_CHARACTER_LABELS[k] ?? slug;
 }

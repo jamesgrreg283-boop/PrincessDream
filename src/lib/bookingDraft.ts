@@ -6,7 +6,7 @@ export const BOOKING_DRAFT_CHANGED_EVENT = "apd-booking-draft-changed";
 
 export const SLOT_HOLD_MINUTES = 15;
 
-export type BookingDraftForm = BookingPayload & { agreeTerms: boolean };
+export type BookingDraftForm = BookingPayload & { agreeTerms: boolean; postcode: string };
 
 export type BookingDraft = {
   version: 1;
@@ -107,6 +107,7 @@ export function normaliseDraftForm(raw: Partial<BookingDraftForm>): BookingDraft
     partyDate: String(raw.partyDate ?? ""),
     partyTime: String(raw.partyTime ?? ""),
     address: String(raw.address ?? ""),
+    postcode: String(raw.postcode ?? ""),
     character: String(raw.character ?? ""),
     packageSlug: String(raw.packageSlug ?? "1-hour-party"),
     numChildren: String(raw.numChildren ?? ""),

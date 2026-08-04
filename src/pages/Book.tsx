@@ -25,6 +25,7 @@ import {
   normaliseDraftForm,
   saveBookingDraft,
 } from "../lib/bookingDraft";
+import { checkServicePostcode } from "../lib/serviceArea";
 import {
   DEFAULT_OCCASION,
   OCCASION_OPTIONS,
@@ -89,7 +90,7 @@ function localDateISO(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
-type FormState = BookingPayload & { agreeTerms: boolean };
+type FormState = BookingPayload & { agreeTerms: boolean; postcode: string };
 
 const initialState: FormState = {
   occasionType: DEFAULT_OCCASION,
@@ -101,6 +102,7 @@ const initialState: FormState = {
   partyDate: "",
   partyTime: "",
   address: "",
+  postcode: "",
   character: "",
   packageSlug: "1-hour-party",
   numChildren: "",
@@ -169,11 +171,14 @@ export default function Book() {
   // Pre-select from query string (deferred setState avoids cascading-render lint)
   useEffect(() => {
     const id = requestAnimationFrame(() => {
+      const charOk =
+        charParam &&
+        (CHARACTERS.some((c) => c.slug === charParam) || charParam === "surprise");
       setForm((f) => ({
         ...f,
         packageSlug:
           pkgParam && PACKAGES.some((p) => p.slug === pkgParam) ? pkgParam : f.packageSlug,
-        character: charParam ? charParam : f.character,
+        character: charOk ? charParam : f.character,
       }));
     });
     return () => cancelAnimationFrame(id);
@@ -401,7 +406,15 @@ export default function Book() {
     else if (occupiedTimes.includes(form.partyTime))
       e.partyTime = "That time is already booked — pick another slot";
     if (!form.address.trim()) e.address = "Please enter the address";
+    const postcodeCheck = checkServicePostcode(form.postcode);
+    if (!postcodeCheck.ok) e.postcode = postcodeCheck.error;
     if (!form.character.trim()) e.character = "Please choose a princess";
+    else if (
+      form.character !== "surprise" &&
+      !CHARACTERS.some((c) => c.slug === form.character)
+    ) {
+      e.character = "Please choose a princess";
+    }
     if (!form.packageSlug) e.packageSlug = "Please choose a package";
     if (!form.agreeTerms) e.agreeTerms = "Please agree to the terms";
     setErrors(e);
@@ -448,6 +461,8 @@ export default function Book() {
         /* If availability API is unreachable (e.g. local dev), continue — server enforces on checkout */
       }
 
+      const postcodeCheck = checkServicePostcode(form.postcode);
+      const normalisedPostcode = postcodeCheck.ok ? postcodeCheck.normalised : form.postcode.trim();
       const payload: BookingPayload = {
         occasionType: form.occasionType,
         parentName: form.parentName,
@@ -457,7 +472,7 @@ export default function Book() {
         childAge: form.childAge,
         partyDate: form.partyDate,
         partyTime: form.partyTime,
-        address: form.address,
+        address: `${form.address.trim()}, ${normalisedPostcode}`,
         character: form.character,
         packageSlug: form.packageSlug,
         numChildren: form.numChildren,
@@ -762,17 +777,35 @@ export default function Book() {
               </Field>
             </div>
 
-            <Field label={occasionCopy.addressLabel} error={errors.address} htmlFor="address">
-              <input
-                id="address"
-                type="text"
-                autoComplete="street-address"
-                className="input-magical"
-                placeholder={occasionCopy.addressPlaceholder}
-                value={form.address}
-                onChange={(e) => update("address", e.target.value)}
-              />
-            </Field>
+            <div className="grid sm:grid-cols-2 gap-5">
+              <Field label={occasionCopy.addressLabel} error={errors.address} htmlFor="address">
+                <input
+                  id="address"
+                  type="text"
+                  autoComplete="street-address"
+                  className="input-magical"
+                  placeholder={occasionCopy.addressPlaceholder}
+                  value={form.address}
+                  onChange={(e) => update("address", e.target.value)}
+                />
+              </Field>
+              <Field label="Postcode" error={errors.postcode} htmlFor="postcode">
+                <input
+                  id="postcode"
+                  type="text"
+                  autoComplete="postal-code"
+                  inputMode="text"
+                  className="input-magical"
+                  placeholder="e.g. CV2 5EJ"
+                  value={form.postcode}
+                  onChange={(e) => update("postcode", e.target.value)}
+                />
+                <p className="mt-1.5 text-xs text-inkSoft leading-snug">
+                  We cover Coventry and nearby towns within about 40 minutes (Bedworth,
+                  Nuneaton, Leamington Spa, Southam, Warwick).
+                </p>
+              </Field>
+            </div>
 
             <div className="grid sm:grid-cols-2 gap-5">
               <Field label="Selected Princess" error={errors.character} htmlFor="character">

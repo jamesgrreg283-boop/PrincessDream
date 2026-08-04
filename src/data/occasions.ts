@@ -26,7 +26,7 @@ export function occasionFieldCopy(type: OccasionType) {
         secondaryPlaceholder: "5",
         showAge: true,
         addressLabel: "Party address",
-        addressPlaceholder: "1 Royal Lane, Coventry, CV1 1AA",
+        addressPlaceholder: "1 Royal Lane, Coventry",
         childrenCountLabel: "Number of children",
       };
     case "family_celebration":
@@ -54,7 +54,7 @@ export function occasionFieldCopy(type: OccasionType) {
         secondaryPlaceholder: "",
         showAge: false,
         addressLabel: "Venue address",
-        addressPlaceholder: "Hall or venue address, postcode",
+        addressPlaceholder: "Hall or venue street address",
         childrenCountLabel: "Approx. number of children expected",
       };
     case "other":

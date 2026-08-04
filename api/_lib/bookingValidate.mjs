@@ -1,5 +1,6 @@
 import { packageBySlug } from "./packages.mjs";
 import { isValidPartyDate, isValidPartyTime } from "./availability.mjs";
+import { checkServicePostcode, normalisePostcode } from "./serviceArea.mjs";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
@@ -11,6 +12,18 @@ const OCCASION_LABELS = {
 };
 
 const ALLOWED_OCCASIONS = new Set(Object.keys(OCCASION_LABELS));
+
+/** Bookable character slugs — keep in sync with src/data/characters.ts */
+const ALLOWED_CHARACTERS = new Set([
+  "glass-slipper-princess",
+  "belle",
+  "rapunzel",
+  "ariel",
+  "elsa",
+  "anna",
+  "fairy-sparkles",
+  "surprise",
+]);
 
 function occasionLine(booking) {
   const t = String(booking.occasionType || "child_birthday");
@@ -25,6 +38,16 @@ export function buildNotes(booking) {
   const s = String(booking.specialRequests || "").trim();
   if (s) parts.push(`Special requests: ${s}`);
   return parts.join("\n\n") || null;
+}
+
+function resolvePostcode(booking) {
+  const fromField = String(booking.postcode || "").trim();
+  if (fromField) return fromField;
+  const address = String(booking.address || "");
+  const m = address
+    .toUpperCase()
+    .match(/\b([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\b/);
+  return m ? m[1] : "";
 }
 
 export function validateBookingPayload(booking) {
@@ -47,7 +70,12 @@ export function validateBookingPayload(booking) {
   if (!isValidPartyDate(String(b.partyDate || ""))) e.push("partyDate");
   if (!isValidPartyTime(String(b.partyTime || ""))) e.push("partyTime");
   if (!String(b.address || "").trim()) e.push("address");
-  if (!String(b.character || "").trim()) e.push("character");
+
+  const postcodeCheck = checkServicePostcode(resolvePostcode(b));
+  if (!postcodeCheck.ok) e.push("postcode");
+
+  const character = String(b.character || "").trim().toLowerCase();
+  if (!character || !ALLOWED_CHARACTERS.has(character)) e.push("character");
   if (!String(b.packageSlug || "").trim()) e.push("packageSlug");
   if (!packageBySlug(String(b.packageSlug || ""))) e.push("packageSlug");
 
@@ -56,6 +84,16 @@ export function validateBookingPayload(booking) {
 
 export function bookingRowFromPayload(booking, pkg) {
   const ageTrim = String(booking.childAge || "").trim();
+  let address = String(booking.address).trim();
+  const pc = resolvePostcode(booking);
+  if (pc && checkServicePostcode(pc).ok) {
+    const normalised = normalisePostcode(pc);
+    const upper = address.toUpperCase().replace(/\s+/g, "");
+    const compactPc = normalised.replace(/\s+/g, "");
+    if (!upper.includes(compactPc)) {
+      address = `${address}, ${normalised}`;
+    }
+  }
   return {
     parent_name: String(booking.parentName).trim(),
     email: String(booking.email).trim(),
@@ -64,7 +102,7 @@ export function bookingRowFromPayload(booking, pkg) {
     child_age: ageTrim || "—",
     party_date: String(booking.partyDate),
     party_start_time: String(booking.partyTime),
-    address: String(booking.address).trim(),
+    address,
     selected_character: String(booking.character).trim(),
     selected_package: String(booking.packageSlug).trim(),
     total_price: pkg.price,
