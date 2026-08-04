@@ -6,6 +6,7 @@ import {
   bookingRowFromPayload,
   validateBookingPayload,
 } from "./_lib/bookingValidate.mjs";
+import { insertBookingRow } from "./_lib/insertBooking.mjs";
 import { packageBySlug } from "./_lib/packages.mjs";
 
 const DEPOSITS_PENCE = {
@@ -158,11 +159,7 @@ export default async function handler(req, res) {
   const row = bookingRowFromPayload(booking, pkg);
   row.hold_expires_at = holdExpires;
 
-  const { data: inserted, error: insErr } = await supabase
-    .from("bookings")
-    .insert(row)
-    .select("id")
-    .single();
+  const { data: inserted, error: insErr } = await insertBookingRow(supabase, row, "id");
 
   if (insErr || !inserted?.id) {
     console.error(insErr);

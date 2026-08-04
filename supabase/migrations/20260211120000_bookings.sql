@@ -11,6 +11,7 @@ create table if not exists public.bookings (
   party_date date not null,
   party_start_time text not null,
   address text not null,
+  postcode text,
   selected_character text not null,
   selected_package text not null,
   total_price integer not null,

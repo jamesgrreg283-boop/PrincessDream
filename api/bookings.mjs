@@ -12,6 +12,7 @@ import {
   buildNotes,
   validateBookingPayload,
 } from "./_lib/bookingValidate.mjs";
+import { insertBookingRow } from "./_lib/insertBooking.mjs";
 import { isSlotAvailable } from "./_lib/availability.mjs";
 
 const STATUSES = new Set(["pending", "confirmed", "cancelled"]);
@@ -84,6 +85,7 @@ export default async function handler(req, res) {
       partyDate: body.partyDate,
       partyTime: body.partyTime,
       address: body.address,
+      postcode: body.postcode,
       character: body.character,
       packageSlug: body.packageSlug,
       numChildren: body.numChildren ?? "",
@@ -119,11 +121,7 @@ export default async function handler(req, res) {
       row.notes = [manual, auto].filter(Boolean).join("\n\n---\n\n");
     }
 
-    const { data: inserted, error: insErr } = await supabase
-      .from("bookings")
-      .insert(row)
-      .select("*")
-      .single();
+    const { data: inserted, error: insErr } = await insertBookingRow(supabase, row);
 
     if (insErr) {
       console.error(insErr);

@@ -78,6 +78,8 @@ export type BookingPayload = {
   partyDate: string;
   partyTime: string;
   address: string;
+  /** UK postcode — validated against service area and stored on the booking row. */
+  postcode: string;
   character: string;
   packageSlug: string;
   numChildren: string;

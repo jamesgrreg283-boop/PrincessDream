@@ -90,7 +90,7 @@ function localDateISO(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
-type FormState = BookingPayload & { agreeTerms: boolean; postcode: string };
+type FormState = BookingPayload & { agreeTerms: boolean };
 
 const initialState: FormState = {
   occasionType: DEFAULT_OCCASION,
@@ -472,7 +472,8 @@ export default function Book() {
         childAge: form.childAge,
         partyDate: form.partyDate,
         partyTime: form.partyTime,
-        address: `${form.address.trim()}, ${normalisedPostcode}`,
+        address: form.address.trim(),
+        postcode: normalisedPostcode,
         character: form.character,
         packageSlug: form.packageSlug,
         numChildren: form.numChildren,

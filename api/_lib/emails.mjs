@@ -99,6 +99,7 @@ function bookingDetailLines(booking) {
     ["Party date", escPlain(booking?.party_date) || "—"],
     ["Start time", escPlain(booking?.party_start_time) || "—"],
     ["Address", escPlain(booking?.address) || "—"],
+    ["Postcode", escPlain(booking?.postcode) || "—"],
     ["Chosen princess", escPlain(princess) || "—"],
     ["Package", pkgName || "—"],
     ["Total price", safePounds(booking?.total_price)],

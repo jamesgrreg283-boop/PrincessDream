@@ -1,6 +1,6 @@
 import { packageBySlug } from "./packages.mjs";
 import { isValidPartyDate, isValidPartyTime } from "./availability.mjs";
-import { checkServicePostcode, normalisePostcode } from "./serviceArea.mjs";
+import { checkServicePostcode } from "./serviceArea.mjs";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
@@ -16,7 +16,6 @@ const ALLOWED_OCCASIONS = new Set(Object.keys(OCCASION_LABELS));
 /** Bookable character slugs — keep in sync with src/data/characters.ts */
 const ALLOWED_CHARACTERS = new Set([
   "glass-slipper-princess",
-  "belle",
   "rapunzel",
   "ariel",
   "elsa",
@@ -84,16 +83,21 @@ export function validateBookingPayload(booking) {
 
 export function bookingRowFromPayload(booking, pkg) {
   const ageTrim = String(booking.childAge || "").trim();
-  let address = String(booking.address).trim();
-  const pc = resolvePostcode(booking);
-  if (pc && checkServicePostcode(pc).ok) {
-    const normalised = normalisePostcode(pc);
-    const upper = address.toUpperCase().replace(/\s+/g, "");
-    const compactPc = normalised.replace(/\s+/g, "");
-    if (!upper.includes(compactPc)) {
-      address = `${address}, ${normalised}`;
-    }
+  const postcodeCheck = checkServicePostcode(resolvePostcode(booking));
+  const normalisedPostcode = postcodeCheck.ok ? postcodeCheck.normalised : "";
+
+  // Street line only in address; postcode stored in its own column.
+  let address = String(booking.address || "").trim();
+  if (normalisedPostcode) {
+    const compactPc = normalisedPostcode.replace(/\s+/g, "");
+    // Strip a trailing postcode if the client still appended it.
+    const stripped = address
+      .replace(new RegExp(`,?\\s*${normalisedPostcode.replace(/\s+/g, "\\s*")}\\s*$`, "i"), "")
+      .replace(new RegExp(`,?\\s*${compactPc}\\s*$`, "i"), "")
+      .trim();
+    if (stripped) address = stripped;
   }
+
   return {
     parent_name: String(booking.parentName).trim(),
     email: String(booking.email).trim(),
@@ -103,6 +107,7 @@ export function bookingRowFromPayload(booking, pkg) {
     party_date: String(booking.partyDate),
     party_start_time: String(booking.partyTime),
     address,
+    postcode: normalisedPostcode || null,
     selected_character: String(booking.character).trim(),
     selected_package: String(booking.packageSlug).trim(),
     total_price: pkg.price,

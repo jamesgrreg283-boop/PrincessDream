@@ -57,6 +57,7 @@ type BookingRow = {
   party_date: string;
   party_start_time: string;
   address: string;
+  postcode: string | null;
   selected_character: string;
   selected_package: string;
   total_price: number;
@@ -88,6 +89,7 @@ type ManualForm = {
   partyDate: string;
   partyTime: string;
   address: string;
+  postcode: string;
   character: string;
   packageSlug: string;
   numChildren: string;
@@ -104,6 +106,7 @@ const emptyManual: ManualForm = {
   partyDate: "",
   partyTime: "",
   address: "",
+  postcode: "",
   character: "",
   packageSlug: PACKAGES[1]?.slug ?? "1-hour-party",
   numChildren: "",
@@ -335,6 +338,7 @@ export default function AdminBookings() {
           partyDate: manual.partyDate,
           partyTime: manual.partyTime,
           address: manual.address,
+          postcode: manual.postcode,
           character: manual.character,
           packageSlug: manual.packageSlug,
           numChildren: manual.numChildren,
@@ -969,14 +973,26 @@ export default function AdminBookings() {
                 </select>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-ink mb-2">Address</label>
-              <input
-                className="input-magical"
-                value={manual.address}
-                onChange={(e) => setManual((m) => ({ ...m, address: e.target.value }))}
-                required
-              />
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-ink mb-2">Address</label>
+                <input
+                  className="input-magical"
+                  value={manual.address}
+                  onChange={(e) => setManual((m) => ({ ...m, address: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ink mb-2">Postcode</label>
+                <input
+                  className="input-magical"
+                  placeholder="e.g. CV2 5EJ"
+                  value={manual.postcode}
+                  onChange={(e) => setManual((m) => ({ ...m, postcode: e.target.value }))}
+                  required
+                />
+              </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
