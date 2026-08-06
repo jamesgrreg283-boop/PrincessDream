@@ -1,6 +1,11 @@
 import { packageBySlug } from "./packages.mjs";
 import { isValidPartyDate, isValidPartyTime } from "./availability.mjs";
 import { checkServicePostcode } from "./serviceArea.mjs";
+import {
+  augustPromoRemaining,
+  augustPromoTotal,
+  isAugustOfferActive,
+} from "./augustOffer.mjs";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
@@ -33,6 +38,11 @@ function occasionLine(booking) {
 
 export function buildNotes(booking) {
   const parts = [occasionLine(booking)];
+  if (isAugustOfferActive()) {
+    parts.push(
+      "August offer: 15% off package total applied to cash balance on the day (online deposit unchanged)."
+    );
+  }
   const n = String(booking.numChildren || "").trim();
   if (n) parts.push(`Number of children: ${n}`);
   const s = String(booking.specialRequests || "").trim();
@@ -99,6 +109,12 @@ export function bookingRowFromPayload(booking, pkg) {
     if (stripped) address = stripped;
   }
 
+  const deposit = Number(pkg.depositOnline) || 0;
+  const total = isAugustOfferActive() ? augustPromoTotal(pkg) : Number(pkg.price) || 0;
+  const remaining = isAugustOfferActive()
+    ? augustPromoRemaining(pkg)
+    : Math.max(0, total - deposit);
+
   return {
     parent_name: String(booking.parentName).trim(),
     email: String(booking.email).trim(),
@@ -111,9 +127,9 @@ export function bookingRowFromPayload(booking, pkg) {
     postcode: normalisedPostcode || null,
     selected_character: String(booking.character).trim(),
     selected_package: String(booking.packageSlug).trim(),
-    total_price: pkg.price,
-    deposit_amount: pkg.depositOnline,
-    remaining_balance: pkg.price - pkg.depositOnline,
+    total_price: total,
+    deposit_amount: deposit,
+    remaining_balance: remaining,
     notes: buildNotes(booking),
     status: "pending",
     stripe_session_id: null,

@@ -8,7 +8,8 @@ import AvailabilityCheckingOverlay, {
   AVAILABILITY_CHECK_MIN_MS,
   formatPartyDateLabel,
 } from "../components/AvailabilityCheckingOverlay";
-import { PACKAGES, depositFor, remainingFor } from "../data/packages";
+import { PACKAGES, depositFor, discountFor, isAugustOfferActive, remainingFor, standardRemainingFor, totalFor } from "../data/packages";
+import { AUGUST_OFFER } from "../data/augustOffer";
 import { CHARACTERS } from "../data/characters";
 import { SITE, TRUST_BADGES } from "../data/site";
 import TrustBadges from "../components/TrustBadges";
@@ -78,7 +79,9 @@ const CHARACTER_LIST_OPTIONS = [
 
 const PACKAGE_LIST_OPTIONS = PACKAGES.map((p) => ({
   value: p.slug,
-  label: `${p.name} — £${p.price}`,
+  label: isAugustOfferActive()
+    ? `${p.name} — £${totalFor(p)} (was £${p.price})`
+    : `${p.name} — £${p.price}`,
 }));
 
 type BookingFlowStep = "pick-slot" | "checking" | "form";
@@ -328,6 +331,10 @@ export default function Book() {
 
   const deposit = depositFor(selectedPackage);
   const balance = remainingFor(selectedPackage);
+  const listBalance = standardRemainingFor(selectedPackage);
+  const promoTotal = totalFor(selectedPackage);
+  const offerOn = isAugustOfferActive();
+  const saved = discountFor(selectedPackage);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -950,18 +957,54 @@ export default function Book() {
               </ul>
 
               <div className="mt-6 pt-6 border-t border-pinkSoft space-y-2">
-                <Row label="Total" value={`£${selectedPackage.price}`} />
-                <Row
-                  label="Deposit (online)"
-                  value={`£${deposit}`}
-                  highlight
-                />
-                <Row label="Balance on day (cash)" value={`£${balance}`} />
+                {offerOn ? (
+                  <>
+                    <div className="mb-3 rounded-xl bg-pinkPale/60 border border-pinkSoft px-3 py-2.5 text-xs text-ink leading-snug">
+                      <span className="font-semibold text-pinkDeep">{AUGUST_OFFER.title}</span>
+                      {" — "}
+                      15% off applied to your cash balance. Deposit stays the same.
+                    </div>
+                    <Row
+                      label="Total"
+                      value={
+                        <span className="inline-flex items-baseline gap-2">
+                          <span className="line-through text-inkSoft/70 font-normal text-sm">
+                            £{selectedPackage.price}
+                          </span>
+                          <span>£{promoTotal}</span>
+                        </span>
+                      }
+                    />
+                    <Row label="Deposit (online)" value={`£${deposit}`} highlight />
+                    <Row
+                      label="Balance on day (cash)"
+                      value={
+                        <span className="inline-flex items-baseline gap-2">
+                          <span className="line-through text-inkSoft/70 font-normal text-sm">
+                            £{listBalance}
+                          </span>
+                          <span className="text-pinkDeep">£{balance}</span>
+                        </span>
+                      }
+                    />
+                    <p className="text-[11px] text-pinkDeep font-medium pt-1">
+                      You save £{saved} on the day
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Row label="Total" value={`£${selectedPackage.price}`} />
+                    <Row label="Deposit (online)" value={`£${deposit}`} highlight />
+                    <Row label="Balance on day (cash)" value={`£${balance}`} />
+                  </>
+                )}
               </div>
 
               <p className="mt-5 text-xs text-inkSoft">
                 Your deposit secures the date and chosen princess. The remaining
                 balance is paid in cash on the day.
+                {offerOn &&
+                  " During our August offer, the discount comes off this cash balance — not your deposit."}
               </p>
             </div>
             )}
@@ -1026,7 +1069,7 @@ function Row({
   highlight = false,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   highlight?: boolean;
 }) {
   return (
