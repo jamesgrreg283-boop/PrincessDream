@@ -81,6 +81,8 @@ export type BookingPayload = {
   /** UK postcode — validated against service area and stored on the booking row. */
   postcode: string;
   character: string;
+  /** Second entertainer slug; empty string = none. £50 on cash balance. */
+  extraCharacter: string;
   packageSlug: string;
   numChildren: string;
   specialRequests: string;

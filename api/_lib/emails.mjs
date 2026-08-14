@@ -85,6 +85,14 @@ function bookingDetailLines(booking) {
     ? `${pkg.name} (${escPlain(slug) || "—"})`
     : escPlain(slug) || "—";
   const princess = characterLabel(booking?.selected_character);
+  const extraSlug = String(booking?.extra_character || "").trim();
+  const extraPrincess = extraSlug
+    ? `${escPlain(characterLabel(extraSlug))} (£50 on the day)`
+    : "None";
+  const kids =
+    booking?.num_children != null && String(booking.num_children).trim() !== ""
+      ? escPlain(booking.num_children)
+      : "—";
   const notesRaw = booking?.notes != null ? String(booking.notes).trim() : "";
   const { occasion, restNotes } = splitOccasionFromNotes(notesRaw);
   const notesDisplay = restNotes ? escPlain(restNotes) : "—";
@@ -101,6 +109,8 @@ function bookingDetailLines(booking) {
     ["Address", escPlain(booking?.address) || "—"],
     ["Postcode", escPlain(booking?.postcode) || "—"],
     ["Chosen princess", escPlain(princess) || "—"],
+    ["Extra princess", extraPrincess],
+    ["Number of children", kids],
     ["Package", pkgName || "—"],
     ["Total price", safePounds(booking?.total_price)],
     ["Deposit paid", safePounds(booking?.deposit_amount)],

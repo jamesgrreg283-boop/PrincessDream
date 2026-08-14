@@ -10,7 +10,13 @@ import AvailabilityCheckingOverlay, {
 } from "../components/AvailabilityCheckingOverlay";
 import { PACKAGES, depositFor, discountFor, isAugustOfferActive, remainingFor, standardRemainingFor, totalFor } from "../data/packages";
 import { AUGUST_OFFER } from "../data/augustOffer";
-import { CHARACTERS } from "../data/characters";
+import { CHARACTERS, characterLabelForSlug } from "../data/characters";
+import {
+  EXTRA_PRINCESS_FEE_GBP,
+  EXTRA_PRINCESS_REQUIRED_ABOVE,
+  extraPrincessFee,
+  extraPrincessRequired,
+} from "../data/extraPrincess";
 import { SITE, TRUST_BADGES } from "../data/site";
 import TrustBadges from "../components/TrustBadges";
 import MagicalDateField from "../components/MagicalDateField";
@@ -107,6 +113,7 @@ const initialState: FormState = {
   address: "",
   postcode: "",
   character: "",
+  extraCharacter: "",
   packageSlug: "1-hour-party",
   numChildren: "",
   specialRequests: "",
@@ -329,15 +336,52 @@ export default function Book() {
     return () => cancelAnimationFrame(frame);
   }, [slotConfirmedAt, flowStep]);
 
+  const extraFee = extraPrincessFee(form.extraCharacter);
+  const hasExtra = extraFee > 0;
+  const extraNeeded = extraPrincessRequired(form.numChildren);
+  const extraPrincessName = hasExtra ? characterLabelForSlug(form.extraCharacter) : "";
+  const packageListTotal = selectedPackage.price;
+  const packagePromoTotal = totalFor(selectedPackage);
+  const packageListBalance = standardRemainingFor(selectedPackage);
+  const packagePromoBalance = remainingFor(selectedPackage);
   const deposit = depositFor(selectedPackage);
-  const balance = remainingFor(selectedPackage);
-  const listBalance = standardRemainingFor(selectedPackage);
-  const promoTotal = totalFor(selectedPackage);
+  const balance = packagePromoBalance + extraFee;
+  const listBalance = packageListBalance + extraFee;
+  const grandTotal = packagePromoTotal + extraFee;
   const offerOn = isAugustOfferActive();
   const saved = discountFor(selectedPackage);
 
+  const extraPrincessOptions = useMemo(() => {
+    const taken = form.character.trim().toLowerCase();
+    return [
+      {
+        value: "",
+        label: extraNeeded ? "Choose a second princess" : "No extra princess",
+        disabled: extraNeeded,
+      },
+      ...CHARACTERS.filter((c) => c.slug !== taken).map((c) => ({
+        value: c.slug,
+        label: c.name,
+      })),
+      ...(taken === "surprise"
+        ? []
+        : [{ value: "surprise", label: "Surprise me!" }]),
+    ];
+  }, [form.character, extraNeeded]);
+
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      if (
+        (key === "character" || key === "extraCharacter") &&
+        next.extraCharacter &&
+        next.character &&
+        next.extraCharacter === next.character
+      ) {
+        next.extraCharacter = "";
+      }
+      return next;
+    });
 
   const validatePickSlot = (): boolean => {
     const e: Partial<Record<keyof FormState, string>> = {};
@@ -422,6 +466,16 @@ export default function Book() {
     ) {
       e.character = "Please choose a princess";
     }
+    const extra = form.extraCharacter.trim();
+    if (extra && extra !== "surprise" && !CHARACTERS.some((c) => c.slug === extra)) {
+      e.extraCharacter = "Please choose a princess";
+    }
+    if (extra && extra === form.character.trim()) {
+      e.extraCharacter = "Please choose a different princess from your first entertainer";
+    }
+    if (extraPrincessRequired(form.numChildren) && !extra) {
+      e.extraCharacter = `Parties with more than ${EXTRA_PRINCESS_REQUIRED_ABOVE} children need a second princess (£${EXTRA_PRINCESS_FEE_GBP} on the day)`;
+    }
     if (!form.packageSlug) e.packageSlug = "Please choose a package";
     if (!form.agreeTerms) e.agreeTerms = "Please agree to the terms";
     setErrors(e);
@@ -482,6 +536,7 @@ export default function Book() {
         address: form.address.trim(),
         postcode: normalisedPostcode,
         character: form.character,
+        extraCharacter: form.extraCharacter.trim(),
         packageSlug: form.packageSlug,
         numChildren: form.numChildren,
         specialRequests: form.specialRequests,
@@ -838,7 +893,7 @@ export default function Book() {
               </Field>
             </div>
 
-            <Field label={occasionCopy.childrenCountLabel} htmlFor="numChildren">
+            <Field label={occasionCopy.childrenCountLabel} error={errors.numChildren} htmlFor="numChildren">
               <input
                 id="numChildren"
                 type="number"
@@ -848,6 +903,32 @@ export default function Book() {
                 value={form.numChildren}
                 onChange={(e) => update("numChildren", e.target.value)}
               />
+              <p className="mt-1.5 text-xs text-inkSoft leading-snug">
+                More than {EXTRA_PRINCESS_REQUIRED_ABOVE} children? A second princess is required
+                (£{EXTRA_PRINCESS_FEE_GBP} added to the cash balance on the day).
+              </p>
+            </Field>
+
+            <Field
+              label={extraNeeded ? "Extra princess (required)" : "Extra princess (optional)"}
+              error={errors.extraCharacter}
+              htmlFor="extraCharacter"
+            >
+              <MagicalListbox
+                id="extraCharacter"
+                value={form.extraCharacter}
+                onChange={(v) => update("extraCharacter", v)}
+                options={extraPrincessOptions}
+                placeholder={
+                  extraNeeded ? "Choose a second princess" : "No extra princess"
+                }
+                invalid={!!errors.extraCharacter}
+              />
+              <p className="mt-1.5 text-xs text-inkSoft leading-snug">
+                {extraNeeded
+                  ? `Because more than ${EXTRA_PRINCESS_REQUIRED_ABOVE} children are attending, please add a second entertainer. The extra £${EXTRA_PRINCESS_FEE_GBP} is paid in cash on the day — your online deposit stays the same.`
+                  : `Add a second entertainer for £${EXTRA_PRINCESS_FEE_GBP}, paid in cash on the day. Your online deposit does not change.`}
+              </p>
             </Field>
 
             <Field label="Special Requests" htmlFor="specialRequests">
@@ -957,46 +1038,56 @@ export default function Book() {
               </ul>
 
               <div className="mt-6 pt-6 border-t border-pinkSoft space-y-2">
-                {offerOn ? (
-                  <>
-                    <div className="mb-3 rounded-xl bg-pinkPale/60 border border-pinkSoft px-3 py-2.5 text-xs text-ink leading-snug">
-                      <span className="font-semibold text-pinkDeep">{AUGUST_OFFER.title}</span>
-                      {" — "}
-                      15% off applied to your cash balance. Deposit stays the same.
-                    </div>
-                    <Row
-                      label="Total"
-                      value={
-                        <span className="inline-flex items-baseline gap-2">
-                          <span className="line-through text-inkSoft/70 font-normal text-sm">
-                            £{selectedPackage.price}
-                          </span>
-                          <span>£{promoTotal}</span>
+                {offerOn && (
+                  <div className="mb-3 rounded-xl bg-pinkPale/60 border border-pinkSoft px-3 py-2.5 text-xs text-ink leading-snug">
+                    <span className="font-semibold text-pinkDeep">{AUGUST_OFFER.title}</span>
+                    {" — "}
+                    15% off the package, applied to your cash balance. Deposit stays the same.
+                    Extra princess is a flat £{EXTRA_PRINCESS_FEE_GBP} on the day.
+                  </div>
+                )}
+                <Row
+                  label="Package"
+                  value={
+                    offerOn ? (
+                      <span className="inline-flex items-baseline gap-2">
+                        <span className="line-through text-inkSoft/70 font-normal text-sm">
+                          £{packageListTotal}
                         </span>
-                      }
-                    />
-                    <Row label="Deposit (online)" value={`£${deposit}`} highlight />
-                    <Row
-                      label="Balance on day (cash)"
-                      value={
-                        <span className="inline-flex items-baseline gap-2">
-                          <span className="line-through text-inkSoft/70 font-normal text-sm">
-                            £{listBalance}
-                          </span>
-                          <span className="text-pinkDeep">£{balance}</span>
+                        <span>£{packagePromoTotal}</span>
+                      </span>
+                    ) : (
+                      `£${packageListTotal}`
+                    )
+                  }
+                />
+                {hasExtra && (
+                  <Row
+                    label={`Extra princess${extraPrincessName ? ` (${extraPrincessName})` : ""}`}
+                    value={`+ £${EXTRA_PRINCESS_FEE_GBP}`}
+                  />
+                )}
+                <Row label="Deposit (online)" value={`£${deposit}`} highlight />
+                <Row
+                  label="Balance on day (cash)"
+                  value={
+                    offerOn ? (
+                      <span className="inline-flex items-baseline gap-2">
+                        <span className="line-through text-inkSoft/70 font-normal text-sm">
+                          £{listBalance}
                         </span>
-                      }
-                    />
-                    <p className="text-[11px] text-pinkDeep font-medium pt-1">
-                      You save £{saved} on the day
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <Row label="Total" value={`£${selectedPackage.price}`} />
-                    <Row label="Deposit (online)" value={`£${deposit}`} highlight />
-                    <Row label="Balance on day (cash)" value={`£${balance}`} />
-                  </>
+                        <span className="text-pinkDeep">£{balance}</span>
+                      </span>
+                    ) : (
+                      `£${balance}`
+                    )
+                  }
+                />
+                <Row label="Grand total" value={`£${grandTotal}`} />
+                {offerOn && (
+                  <p className="text-[11px] text-pinkDeep font-medium pt-1">
+                    You save £{saved} on the package (extra princess is not discounted)
+                  </p>
                 )}
               </div>
 

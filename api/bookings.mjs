@@ -87,6 +87,7 @@ export default async function handler(req, res) {
       address: body.address,
       postcode: body.postcode,
       character: body.character,
+      extraCharacter: body.extraCharacter ?? "",
       packageSlug: body.packageSlug,
       numChildren: body.numChildren ?? "",
       specialRequests: body.specialRequests ?? "",

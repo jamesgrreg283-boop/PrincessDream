@@ -30,6 +30,10 @@ export const FAQS: Faq[] = [
     a: "Absolutely! Choose your princess at the time of booking. Bookings are subject to character availability on your chosen date.",
   },
   {
+    q: "Can I book an extra princess?",
+    a: "Yes — you can add a second princess for £50, paid in cash on the day (the online deposit stays the same). If more than 20 children are attending, a second princess is required so every guest gets enough attention.",
+  },
+  {
     q: "What ages are your parties suitable for?",
     a: "Typically ages 3 to 10, but we can adapt the experience for different age groups — just let us know in your booking form.",
   },

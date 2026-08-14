@@ -14,6 +14,8 @@ create table if not exists public.bookings (
   postcode text,
   selected_character text not null,
   selected_package text not null,
+  extra_character text,
+  num_children integer,
   total_price integer not null,
   deposit_amount integer not null,
   remaining_balance integer not null,

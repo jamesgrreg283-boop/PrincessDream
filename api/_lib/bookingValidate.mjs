@@ -6,6 +6,11 @@ import {
   augustPromoTotal,
   isAugustOfferActive,
 } from "./augustOffer.mjs";
+import {
+  extraPrincessFee,
+  extraPrincessRequired,
+  parseChildCount,
+} from "./extraPrincess.mjs";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
@@ -45,6 +50,10 @@ export function buildNotes(booking) {
   }
   const n = String(booking.numChildren || "").trim();
   if (n) parts.push(`Number of children: ${n}`);
+  const extra = String(booking.extraCharacter || "").trim();
+  if (extra) {
+    parts.push(`Extra princess: ${extra} (£${extraPrincessFee(extra)} on the day)`);
+  }
   const s = String(booking.specialRequests || "").trim();
   if (s) parts.push(`Special requests: ${s}`);
   return parts.join("\n\n") || null;
@@ -86,6 +95,12 @@ export function validateBookingPayload(booking) {
 
   const character = String(b.character || "").trim().toLowerCase();
   if (!character || !ALLOWED_CHARACTERS.has(character)) e.push("character");
+
+  const extraCharacter = String(b.extraCharacter || "").trim().toLowerCase();
+  if (extraCharacter && !ALLOWED_CHARACTERS.has(extraCharacter)) e.push("extraCharacter");
+  if (extraCharacter && extraCharacter === character) e.push("extraCharacter");
+  if (extraPrincessRequired(b.numChildren) && !extraCharacter) e.push("extraCharacter");
+
   if (!String(b.packageSlug || "").trim()) e.push("packageSlug");
   if (!packageBySlug(String(b.packageSlug || ""))) e.push("packageSlug");
 
@@ -109,11 +124,16 @@ export function bookingRowFromPayload(booking, pkg) {
     if (stripped) address = stripped;
   }
 
+  const extraCharacter = String(booking.extraCharacter || "").trim().toLowerCase();
+  const extraFee = extraPrincessFee(extraCharacter);
   const deposit = Number(pkg.depositOnline) || 0;
-  const total = isAugustOfferActive() ? augustPromoTotal(pkg) : Number(pkg.price) || 0;
-  const remaining = isAugustOfferActive()
+  const packageTotal = isAugustOfferActive() ? augustPromoTotal(pkg) : Number(pkg.price) || 0;
+  const packageRemaining = isAugustOfferActive()
     ? augustPromoRemaining(pkg)
-    : Math.max(0, total - deposit);
+    : Math.max(0, packageTotal - deposit);
+  const total = packageTotal + extraFee;
+  const remaining = packageRemaining + extraFee;
+  const kids = parseChildCount(booking.numChildren);
 
   return {
     parent_name: String(booking.parentName).trim(),
@@ -126,6 +146,8 @@ export function bookingRowFromPayload(booking, pkg) {
     address,
     postcode: normalisedPostcode || null,
     selected_character: String(booking.character).trim(),
+    extra_character: extraCharacter || null,
+    num_children: kids,
     selected_package: String(booking.packageSlug).trim(),
     total_price: total,
     deposit_amount: deposit,

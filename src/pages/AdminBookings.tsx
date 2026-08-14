@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, Fragment } from "react";
 import SEO from "../components/SEO";
 import PageHeader from "../components/PageHeader";
 import { PACKAGES } from "../data/packages";
@@ -59,6 +59,8 @@ type BookingRow = {
   address: string;
   postcode: string | null;
   selected_character: string;
+  extra_character: string | null;
+  num_children: number | null;
   selected_package: string;
   total_price: number;
   deposit_amount: number;
@@ -91,6 +93,7 @@ type ManualForm = {
   address: string;
   postcode: string;
   character: string;
+  extraCharacter: string;
   packageSlug: string;
   numChildren: string;
   specialRequests: string;
@@ -108,6 +111,7 @@ const emptyManual: ManualForm = {
   address: "",
   postcode: "",
   character: "",
+  extraCharacter: "",
   packageSlug: PACKAGES[1]?.slug ?? "1-hour-party",
   numChildren: "",
   specialRequests: "",
@@ -121,6 +125,41 @@ function paymentLabel(b: BookingRow): string {
   }
   if (b.stripe_session_id) return "Awaiting payment";
   return "Pending hold";
+}
+
+function gbp(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(Number(n))) return "—";
+  return `£${Number(n)}`;
+}
+
+function packageName(slug: string): string {
+  return PACKAGES.find((p) => p.slug === slug)?.name ?? slug;
+}
+
+function formatPartyDate(iso: string): string {
+  if (!iso) return "—";
+  try {
+    return new Date(`${iso}T12:00:00`).toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function todayISO(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function partyKey(b: BookingRow): string {
+  return `${b.party_date}T${b.party_start_time || "00:00"}`;
 }
 
 export default function AdminBookings() {
@@ -145,6 +184,10 @@ export default function AdminBookings() {
   });
   const [blockMsg, setBlockMsg] = useState<string | null>(null);
   const [bookingDeleteConfirmId, setBookingDeleteConfirmId] = useState<string | null>(null);
+  const [crmFilter, setCrmFilter] = useState<"upcoming" | "past" | "cancelled" | "all">(
+    "upcoming"
+  );
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [testPkg, setTestPkg] = useState("30-minute-appearance");
   const [testEmail, setTestEmail] = useState("");
@@ -160,6 +203,50 @@ export default function AdminBookings() {
     ],
     []
   );
+
+  const today = todayISO();
+
+  const sortedBookings = useMemo(() => {
+    const list = [...(bookings ?? [])];
+    list.sort((a, b) => {
+      const ka = partyKey(a);
+      const kb = partyKey(b);
+      if (ka !== kb) return ka.localeCompare(kb);
+      return a.created_at.localeCompare(b.created_at);
+    });
+    return list;
+  }, [bookings]);
+
+  const filteredBookings = useMemo(() => {
+    return sortedBookings.filter((b) => {
+      if (crmFilter === "cancelled") return b.status === "cancelled";
+      if (crmFilter === "upcoming") {
+        return b.status !== "cancelled" && b.party_date >= today;
+      }
+      if (crmFilter === "past") {
+        return b.status !== "cancelled" && b.party_date < today;
+      }
+      return true;
+    });
+  }, [sortedBookings, crmFilter, today]);
+
+  const stats = useMemo(() => {
+    const upcomingConfirmed = sortedBookings.filter(
+      (b) => b.status === "confirmed" && b.party_date >= today
+    );
+    const upcomingAll = sortedBookings.filter(
+      (b) => b.status !== "cancelled" && b.party_date >= today
+    );
+    const deposits = upcomingConfirmed.reduce((s, b) => s + (Number(b.deposit_amount) || 0), 0);
+    const due = upcomingConfirmed.reduce((s, b) => s + (Number(b.remaining_balance) || 0), 0);
+    return {
+      upcomingCount: upcomingAll.length,
+      confirmedUpcoming: upcomingConfirmed.length,
+      deposits,
+      due,
+      expected: deposits + due,
+    };
+  }, [sortedBookings, today]);
 
   const loadAll = useCallback(async () => {
     setLoadError(null);
@@ -340,6 +427,7 @@ export default function AdminBookings() {
           address: manual.address,
           postcode: manual.postcode,
           character: manual.character,
+          extraCharacter: manual.extraCharacter,
           packageSlug: manual.packageSlug,
           numChildren: manual.numChildren,
           specialRequests: manual.specialRequests,
@@ -506,7 +594,7 @@ export default function AdminBookings() {
       <PageHeader
         eyebrow="Staff"
         title="Bookings"
-        subtitle="View bookings, update status, add manual entries, block dates, and send no-payment test confirmation emails (staff password required)."
+        subtitle="Upcoming parties, revenue, and full booking details — plus manual entries, blocked dates, and test emails."
       />
 
       <section className="section-pad bg-white space-y-12 pb-24">
@@ -609,103 +697,243 @@ export default function AdminBookings() {
           </div>
         )}
 
-        <div className="container-px max-w-6xl mx-auto">
-          <h2 className="heading-display text-xl mb-3">All bookings</h2>
+        <div className="container-px max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
+            <div>
+              <h2 className="heading-display text-xl">Bookings CRM</h2>
+              <p className="text-sm text-inkSoft mt-1">
+                Upcoming parties first by date. Open a row for full contact, address, and payment
+                details.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["upcoming", "Upcoming"],
+                  ["past", "Past"],
+                  ["cancelled", "Cancelled"],
+                  ["all", "All"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setCrmFilter(id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                    crmFilter === id
+                      ? "bg-pinkDeep text-white border-pinkDeep"
+                      : "bg-white text-inkSoft border-pinkSoft hover:border-pinkDeep"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+            <div className="card-magical p-4">
+              <p className="text-[11px] uppercase tracking-wider text-inkSoft font-cinzel">
+                Upcoming parties
+              </p>
+              <p className="font-display text-3xl text-ink mt-1">{stats.upcomingCount}</p>
+              <p className="text-xs text-inkSoft mt-1">
+                {stats.confirmedUpcoming} confirmed
+              </p>
+            </div>
+            <div className="card-magical p-4">
+              <p className="text-[11px] uppercase tracking-wider text-inkSoft font-cinzel">
+                Deposits in
+              </p>
+              <p className="font-display text-3xl text-ink mt-1">{gbp(stats.deposits)}</p>
+              <p className="text-xs text-inkSoft mt-1">Confirmed upcoming</p>
+            </div>
+            <div className="card-magical p-4">
+              <p className="text-[11px] uppercase tracking-wider text-inkSoft font-cinzel">
+                Cash still due
+              </p>
+              <p className="font-display text-3xl text-ink mt-1">{gbp(stats.due)}</p>
+              <p className="text-xs text-inkSoft mt-1">Balance on the day</p>
+            </div>
+            <div className="card-magical p-4">
+              <p className="text-[11px] uppercase tracking-wider text-inkSoft font-cinzel">
+                Expected total
+              </p>
+              <p className="font-display text-3xl accent-text mt-1">{gbp(stats.expected)}</p>
+              <p className="text-xs text-inkSoft mt-1">Deposits + remaining</p>
+            </div>
+          </div>
+
           <div className="overflow-x-auto card-magical p-4 sm:p-6">
             <table className="min-w-full text-sm text-left">
               <thead>
                 <tr className="border-b border-pinkSoft text-inkSoft">
                   <th className="py-2 pr-3">Date</th>
                   <th className="py-2 pr-3">Time</th>
-                  <th className="py-2 pr-3">Parent</th>
-                  <th className="py-2 pr-3">Child</th>
+                  <th className="py-2 pr-3">Family</th>
+                  <th className="py-2 pr-3">Package</th>
                   <th className="py-2 pr-3">Princess</th>
-                  <th className="py-2 pr-3">Email</th>
+                  <th className="py-2 pr-3">Kids</th>
+                  <th className="py-2 pr-3">Due</th>
                   <th className="py-2 pr-3">Status</th>
-                  <th className="py-2 pr-3">Payment</th>
                   <th className="py-2 pr-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {(bookings ?? []).map((b) => (
-                  <tr key={b.id} className="border-b border-pinkSoft/60 align-top">
-                    <td className="py-2 pr-3 whitespace-nowrap">{b.party_date}</td>
-                    <td className="py-2 pr-3 whitespace-nowrap">{b.party_start_time}</td>
-                    <td className="py-2 pr-3">{b.parent_name}</td>
-                    <td className="py-2 pr-3">{b.child_name}</td>
-                    <td className="py-2 pr-3 text-xs whitespace-nowrap">
-                      {characterLabelForSlug(b.selected_character)}
-                    </td>
-                    <td className="py-2 pr-3 break-all max-w-[9rem]">{b.email}</td>
-                    <td className="py-2 pr-3">
-                      <select
-                        className="input-magical py-2 text-xs min-w-[8rem]"
-                        value={statusDrafts[b.id] ?? b.status}
-                        onChange={(e) =>
-                          setStatusDrafts((d) => ({ ...d, [b.id]: e.target.value }))
-                        }
-                      >
-                        <option value="pending">pending</option>
-                        <option value="confirmed">confirmed</option>
-                        <option value="cancelled">cancelled</option>
-                      </select>
-                    </td>
-                    <td className="py-2 pr-3 text-xs text-inkSoft whitespace-nowrap">
-                      {paymentLabel(b)}
-                    </td>
-                    <td className="py-2 pr-3 space-y-1">
-                      <button
-                        type="button"
-                        className="block text-xs text-pinkDeep underline"
-                        onClick={() => void saveStatus(b.id)}
-                      >
-                        Save status
-                      </button>
-                      {b.status === "confirmed" && (
-                        <button
-                          type="button"
-                          className="block text-xs text-inkSoft underline"
-                          onClick={() => void resendEmail(b.id)}
-                        >
-                          Resend emails
-                        </button>
-                      )}
-                      {bookingDeleteConfirmId === b.id ? (
-                        <div className="mt-2 pt-2 border-t border-pinkSoft/50 space-y-1">
-                          <p className="text-xs text-amber-900 font-medium">Delete this booking?</p>
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              className="text-xs font-semibold text-red-700 underline"
-                              onClick={() => void deleteBooking(b.id)}
-                            >
-                              Confirm delete
-                            </button>
-                            <button
-                              type="button"
-                              className="text-xs text-inkSoft underline"
-                              onClick={() => setBookingDeleteConfirmId(null)}
-                            >
-                              Cancel
-                            </button>
+                {filteredBookings.map((b) => {
+                  const open = expandedId === b.id;
+                  const extra = b.extra_character
+                    ? characterLabelForSlug(b.extra_character)
+                    : null;
+                  return (
+                    <Fragment key={b.id}>
+                      <tr className="border-b border-pinkSoft/60 align-top">
+                        <td className="py-2 pr-3 whitespace-nowrap">
+                          {formatPartyDate(b.party_date)}
+                        </td>
+                        <td className="py-2 pr-3 whitespace-nowrap">{b.party_start_time}</td>
+                        <td className="py-2 pr-3">
+                          <div className="font-medium">{b.parent_name}</div>
+                          <div className="text-xs text-inkSoft">{b.child_name}</div>
+                        </td>
+                        <td className="py-2 pr-3 text-xs">{packageName(b.selected_package)}</td>
+                        <td className="py-2 pr-3 text-xs">
+                          {characterLabelForSlug(b.selected_character)}
+                          {extra && (
+                            <div className="text-pinkDeep mt-0.5">+ {extra}</div>
+                          )}
+                        </td>
+                        <td className="py-2 pr-3">{b.num_children ?? "—"}</td>
+                        <td className="py-2 pr-3 whitespace-nowrap">
+                          <div className="font-medium">{gbp(b.remaining_balance)}</div>
+                          <div className="text-[11px] text-inkSoft">
+                            Total {gbp(b.total_price)} · Dep {gbp(b.deposit_amount)}
                           </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="block text-xs text-red-700/90 underline mt-1"
-                          onClick={() => setBookingDeleteConfirmId(b.id)}
-                        >
-                          Delete booking
-                        </button>
+                        </td>
+                        <td className="py-2 pr-3">
+                          <select
+                            className="input-magical py-2 text-xs min-w-[8rem]"
+                            value={statusDrafts[b.id] ?? b.status}
+                            onChange={(e) =>
+                              setStatusDrafts((d) => ({ ...d, [b.id]: e.target.value }))
+                            }
+                          >
+                            <option value="pending">pending</option>
+                            <option value="confirmed">confirmed</option>
+                            <option value="cancelled">cancelled</option>
+                          </select>
+                          <div className="text-[11px] text-inkSoft mt-1">{paymentLabel(b)}</div>
+                        </td>
+                        <td className="py-2 pr-3 space-y-1">
+                          <button
+                            type="button"
+                            className="block text-xs text-pinkDeep underline"
+                            onClick={() => setExpandedId(open ? null : b.id)}
+                          >
+                            {open ? "Hide details" : "Details"}
+                          </button>
+                          <button
+                            type="button"
+                            className="block text-xs text-pinkDeep underline"
+                            onClick={() => void saveStatus(b.id)}
+                          >
+                            Save status
+                          </button>
+                          {b.status === "confirmed" && (
+                            <button
+                              type="button"
+                              className="block text-xs text-inkSoft underline"
+                              onClick={() => void resendEmail(b.id)}
+                            >
+                              Resend emails
+                            </button>
+                          )}
+                          {bookingDeleteConfirmId === b.id ? (
+                            <div className="mt-2 pt-2 border-t border-pinkSoft/50 space-y-1">
+                              <p className="text-xs text-amber-900 font-medium">
+                                Delete this booking?
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  className="text-xs font-semibold text-red-700 underline"
+                                  onClick={() => void deleteBooking(b.id)}
+                                >
+                                  Confirm delete
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-xs text-inkSoft underline"
+                                  onClick={() => setBookingDeleteConfirmId(null)}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="block text-xs text-red-700/90 underline mt-1"
+                              onClick={() => setBookingDeleteConfirmId(b.id)}
+                            >
+                              Delete booking
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      {open && (
+                        <tr className="bg-pinkSoft/20 border-b border-pinkSoft/60">
+                          <td colSpan={9} className="py-3 px-3 text-xs text-ink">
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              <p>
+                                <span className="text-inkSoft">Phone: </span>
+                                <a href={`tel:${b.phone}`} className="text-pinkDeep underline">
+                                  {b.phone}
+                                </a>
+                              </p>
+                              <p>
+                                <span className="text-inkSoft">Email: </span>
+                                <a href={`mailto:${b.email}`} className="text-pinkDeep underline break-all">
+                                  {b.email}
+                                </a>
+                              </p>
+                              <p>
+                                <span className="text-inkSoft">Address: </span>
+                                {[b.address, b.postcode].filter(Boolean).join(", ") || "—"}
+                              </p>
+                              <p>
+                                <span className="text-inkSoft">Extra princess: </span>
+                                {extra ?? "None"}
+                              </p>
+                              <p>
+                                <span className="text-inkSoft">Payment: </span>
+                                {paymentLabel(b)}
+                              </p>
+                              <p>
+                                <span className="text-inkSoft">Booked: </span>
+                                {b.created_at
+                                  ? new Date(b.created_at).toLocaleString("en-GB")
+                                  : "—"}
+                              </p>
+                              {b.notes && (
+                                <p className="sm:col-span-2 lg:col-span-3 whitespace-pre-wrap">
+                                  <span className="text-inkSoft">Notes: </span>
+                                  {b.notes}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                ))}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
-            {bookings && bookings.length === 0 && (
-              <p className="text-inkSoft text-sm py-6 text-center">No bookings yet.</p>
+            {bookings && filteredBookings.length === 0 && (
+              <p className="text-inkSoft text-sm py-6 text-center">
+                No bookings in this view.
+              </p>
             )}
           </div>
         </div>
@@ -946,12 +1174,38 @@ export default function AdminBookings() {
                 <select
                   className="input-magical"
                   value={manual.character}
-                  onChange={(e) => setManual((m) => ({ ...m, character: e.target.value }))}
+                  onChange={(e) =>
+                    setManual((m) => {
+                      const character = e.target.value;
+                      const extraCharacter =
+                        m.extraCharacter === character ? "" : m.extraCharacter;
+                      return { ...m, character, extraCharacter };
+                    })
+                  }
                   required
                 >
                   <option value="">Choose</option>
                   {characterOptions.map((c) => (
                     <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ink mb-2">
+                  Extra princess (optional / required if &gt;20 children)
+                </label>
+                <select
+                  className="input-magical"
+                  value={manual.extraCharacter}
+                  onChange={(e) => setManual((m) => ({ ...m, extraCharacter: e.target.value }))}
+                >
+                  <option value="">None</option>
+                  {characterOptions
+                    .filter((c) => c.value !== manual.character)
+                    .map((c) => (
+                    <option key={`extra-${c.value}`} value={c.value}>
                       {c.label}
                     </option>
                   ))}

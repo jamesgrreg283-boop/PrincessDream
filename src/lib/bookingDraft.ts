@@ -109,6 +109,7 @@ export function normaliseDraftForm(raw: Partial<BookingDraftForm>): BookingDraft
     address: String(raw.address ?? ""),
     postcode: String(raw.postcode ?? ""),
     character: String(raw.character ?? ""),
+    extraCharacter: String(raw.extraCharacter ?? ""),
     packageSlug: String(raw.packageSlug ?? "1-hour-party"),
     numChildren: String(raw.numChildren ?? ""),
     specialRequests: String(raw.specialRequests ?? ""),

@@ -38,6 +38,8 @@ export function buildSyntheticTestBooking(opts) {
     address: "123 Example Street, Coventry",
     postcode: "CV1 1AA",
     selected_character: "elsa",
+    extra_character: null,
+    num_children: 10,
     selected_package: packageSlug,
     total_price: total,
     deposit_amount: deposit,
