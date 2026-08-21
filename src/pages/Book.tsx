@@ -578,7 +578,7 @@ export default function Book() {
         }
         subtitle={
           flowStep === "pick-slot" || flowStep === "checking"
-            ? "First, choose your party date and start time — we'll check the calendar and then you can complete your booking."
+            ? "First, choose your party date and start time — please allow at least 3 weeks' notice. We'll check the calendar, then you can complete your booking."
             : "Fill out the form below to request your magical party. We'll respond quickly to confirm details and secure your date with your online deposit."
         }
       />
@@ -616,12 +616,18 @@ export default function Book() {
             {flowStep === "pick-slot" && (
               <>
                 <h2 className="heading-display text-2xl sm:text-3xl">Check Availability</h2>
-                <p className="text-sm text-inkSoft -mt-1 leading-relaxed">
-                  Parties can be booked any day of the week, with at least{" "}
-                  <strong className="font-semibold text-ink">
-                    {MIN_BOOKING_LEAD_DAYS} days&apos; (3 weeks&apos;) notice
-                  </strong>
-                  . Pick when the visit{" "}
+                <div
+                  role="note"
+                  className="rounded-xl bg-pinkPale/70 border border-pinkSoft px-3.5 py-3 text-sm text-ink leading-snug"
+                >
+                  <strong className="font-semibold text-pinkDeep">
+                    Minimum {MIN_BOOKING_LEAD_DAYS} days&apos; (3 weeks&apos;) notice.
+                  </strong>{" "}
+                  Online bookings need at least three weeks before the party or appearance —
+                  earlier dates cannot be selected here.
+                </div>
+                <p className="text-sm text-inkSoft leading-relaxed">
+                  Parties can be booked any day of the week. Pick when the visit{" "}
                   <strong className="font-semibold text-ink">starts</strong> — arrivals from 9:00
                   am to 4:00 pm in 15-minute steps.
                 </p>
@@ -1008,7 +1014,8 @@ export default function Book() {
                 <h3 className="font-display text-2xl mt-2">Choose date &amp; time</h3>
                 <p className="text-sm text-inkSoft mt-2 leading-relaxed">
                   We use the same live calendar as our team — unavailable slots are greyed out so
-                  you only pick times that are genuinely free.
+                  you only pick times that are genuinely free. Please book at least{" "}
+                  <strong className="font-semibold text-ink">3 weeks in advance</strong>.
                 </p>
                 <div className="mt-6 pt-6 border-t border-pinkSoft">
                   <TrustBadges items={TRUST_BADGES} />

@@ -7,6 +7,7 @@ import TrustBadges from "../components/TrustBadges";
 import { PACKAGES, depositFor, isAugustOfferActive, remainingFor, standardRemainingFor, totalFor } from "../data/packages";
 import { TRUST_BADGES } from "../data/site";
 import { AUGUST_OFFER } from "../data/augustOffer";
+import { MIN_BOOKING_LEAD_DAYS } from "../data/bookingLeadTime";
 
 export default function Packages() {
   const offerOn = isAugustOfferActive();
@@ -26,12 +27,20 @@ export default function Packages() {
             Magical <span className="accent-text">Princess Parties</span> for Every Birthday
           </>
         }
-        subtitle="Three beautifully crafted packages, each one designed to make your child feel like royalty. Pay a fixed online deposit to secure your date."
+        subtitle={`Three beautifully crafted packages, each one designed to make your child feel like royalty. Pay a fixed online deposit to secure your date — please book at least ${MIN_BOOKING_LEAD_DAYS} days (3 weeks) in advance.`}
       />
 
       <section className="section-pad bg-white relative overflow-hidden">
         <Sparkles count={30} variant="gold" className="opacity-40" />
         <div className="container-px max-w-7xl mx-auto relative z-10">
+          <p className="text-center text-sm sm:text-base text-inkSoft max-w-2xl mx-auto mb-10 leading-relaxed">
+            <strong className="font-semibold text-ink">Booking policy:</strong> every party and
+            appearance needs a minimum of{" "}
+            <strong className="font-semibold text-pinkDeep">
+              {MIN_BOOKING_LEAD_DAYS} days&apos; (3 weeks&apos;) notice
+            </strong>
+            . The online booking form only offers dates from three weeks ahead.
+          </p>
           <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
             {PACKAGES.map((p, i) => (
               <PackageCard key={p.slug} pkg={p} index={i} />
@@ -45,8 +54,8 @@ export default function Packages() {
             </h2>
             <div className="accent-hr mt-4" />
             <p className="text-center text-inkSoft mt-4">
-              We make payment effortless: your online deposit secures your booking, and the
-              remainder is paid in cash on the day of the party.
+              We make payment effortless: your online deposit secures your booking (with at least
+              3 weeks&apos; notice), and the remainder is paid in cash on the day of the party.
               {offerOn && (
                 <>
                   {" "}
