@@ -114,6 +114,13 @@ export default async function handler(req, res) {
 
     if (insErr) {
       console.error(insErr);
+      const detail = String(insErr.message || "").toLowerCase();
+      if (detail.includes("party_end_date") || detail.includes("party_end_time")) {
+        return res.status(500).json({
+          error:
+            "Database is missing block range columns. Ask your developer to apply the blocked_slots range migration.",
+        });
+      }
       return res.status(500).json({ error: "Could not create block" });
     }
 

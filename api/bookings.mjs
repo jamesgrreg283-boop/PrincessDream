@@ -93,7 +93,8 @@ export default async function handler(req, res) {
       specialRequests: body.specialRequests ?? "",
     };
 
-    const v = validateBookingPayload(booking);
+    // Admin can enter short-notice holds / Instagram bookings.
+    const v = validateBookingPayload(booking, { skipLeadTime: true });
     if (!v.ok) {
       return res.status(400).json({ error: "Invalid booking", fields: v.errors });
     }

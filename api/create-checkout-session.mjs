@@ -119,6 +119,13 @@ export default async function handler(req, res) {
 
   const v = validateBookingPayload(booking);
   if (!v.ok) {
+    if (v.errors.includes("partyDateLeadTime")) {
+      return res.status(400).json({
+        error:
+          "Parties and appearances must be booked at least 3 weeks (21 days) in advance.",
+        fields: v.errors,
+      });
+    }
     return res.status(400).json({ error: "Invalid booking fields", fields: v.errors });
   }
 

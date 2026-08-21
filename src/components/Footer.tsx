@@ -142,7 +142,7 @@ export default function Footer() {
             Privacy Policy
           </Link>
           <Link to="/terms" className="hover:text-pinkDeep">
-            Terms & Conditions
+            Terms & Booking Policy
           </Link>
         </div>
       </div>

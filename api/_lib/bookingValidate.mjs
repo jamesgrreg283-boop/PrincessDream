@@ -11,6 +11,7 @@ import {
   extraPrincessRequired,
   parseChildCount,
 } from "./extraPrincess.mjs";
+import { isPartyDateTooSoon } from "./bookingLeadTime.mjs";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
@@ -69,7 +70,11 @@ function resolvePostcode(booking) {
   return m ? m[1] : "";
 }
 
-export function validateBookingPayload(booking) {
+/**
+ * @param {object} booking
+ * @param {{ skipLeadTime?: boolean }} [opts] Admin manual entries may skip the 3-week rule.
+ */
+export function validateBookingPayload(booking, opts = {}) {
   const e = [];
   if (!booking || typeof booking !== "object") {
     return { ok: false, errors: ["Invalid booking"] };
@@ -87,6 +92,9 @@ export function validateBookingPayload(booking) {
   if (occasionType === "child_birthday" && !String(b.childAge || "").trim())
     e.push("childAge");
   if (!isValidPartyDate(String(b.partyDate || ""))) e.push("partyDate");
+  else if (!opts.skipLeadTime && isPartyDateTooSoon(String(b.partyDate))) {
+    e.push("partyDateLeadTime");
+  }
   if (!isValidPartyTime(String(b.partyTime || ""))) e.push("partyTime");
   if (!String(b.address || "").trim()) e.push("address");
 

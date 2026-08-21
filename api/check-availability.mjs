@@ -11,7 +11,12 @@ import {
   isSlotAvailable,
   isValidPartyDate,
   isValidPartyTime,
+  PARTY_GRID_TIMES,
 } from "./_lib/availability.mjs";
+import {
+  BOOKING_LEAD_TIME_MESSAGE,
+  isPartyDateTooSoon,
+} from "./_lib/bookingLeadTime.mjs";
 
 export default async function handler(req, res) {
   const requestOrigin = getRequestOrigin(req);
@@ -45,6 +50,22 @@ export default async function handler(req, res) {
 
   if (!isValidPartyDate(date)) {
     return res.status(400).json({ error: "Invalid or missing date" });
+  }
+
+  if (isPartyDateTooSoon(date)) {
+    if (time) {
+      return res.status(200).json({
+        available: false,
+        partyDate: date,
+        partyTime: time,
+        error: BOOKING_LEAD_TIME_MESSAGE,
+      });
+    }
+    return res.status(200).json({
+      occupiedTimes: [...PARTY_GRID_TIMES],
+      partyDate: date,
+      error: BOOKING_LEAD_TIME_MESSAGE,
+    });
   }
 
   try {

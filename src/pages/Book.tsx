@@ -39,6 +39,12 @@ import {
   occasionFieldCopy,
   type OccasionType,
 } from "../data/occasions";
+import {
+  BOOKING_LEAD_TIME_MESSAGE,
+  earliestBookableDateISO,
+  isPartyDateTooSoon,
+  MIN_BOOKING_LEAD_DAYS,
+} from "../data/bookingLeadTime";
 
 /** Party start times: every day, 9:00 am–4:00 pm inclusive, 15-minute steps. */
 const PARTY_START_TIME_OPTIONS: { value: string; label: string }[] = (() => {
@@ -91,13 +97,6 @@ const PACKAGE_LIST_OPTIONS = PACKAGES.map((p) => ({
 }));
 
 type BookingFlowStep = "pick-slot" | "checking" | "form";
-
-function localDateISO(date = new Date()): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 type FormState = BookingPayload & { agreeTerms: boolean };
 
@@ -386,6 +385,7 @@ export default function Book() {
   const validatePickSlot = (): boolean => {
     const e: Partial<Record<keyof FormState, string>> = {};
     if (!form.partyDate) e.partyDate = "Please choose a date";
+    else if (isPartyDateTooSoon(form.partyDate)) e.partyDate = BOOKING_LEAD_TIME_MESSAGE;
     if (!form.partyTime) e.partyTime = "Please choose a start time";
     else if (!PARTY_TIME_VALUE_SET.has(form.partyTime))
       e.partyTime = "Please choose a time between 9:00 am and 4:00 pm";
@@ -451,6 +451,7 @@ export default function Book() {
       if (!form.childAge.trim()) e.childAge = "Please enter your child's age";
     }
     if (!form.partyDate) e.partyDate = "Please choose a date";
+    else if (isPartyDateTooSoon(form.partyDate)) e.partyDate = BOOKING_LEAD_TIME_MESSAGE;
     if (!form.partyTime) e.partyTime = "Please choose a start time";
     else if (!PARTY_TIME_VALUE_SET.has(form.partyTime))
       e.partyTime = "Please choose a time between 9:00 am and 4:00 pm";
@@ -547,7 +548,7 @@ export default function Book() {
     }
   };
 
-  const today = localDateISO();
+  const earliestDate = earliestBookableDateISO();
 
   return (
     <>
@@ -616,7 +617,11 @@ export default function Book() {
               <>
                 <h2 className="heading-display text-2xl sm:text-3xl">Check Availability</h2>
                 <p className="text-sm text-inkSoft -mt-1 leading-relaxed">
-                  Parties can be booked any day of the week. Pick when the visit{" "}
+                  Parties can be booked any day of the week, with at least{" "}
+                  <strong className="font-semibold text-ink">
+                    {MIN_BOOKING_LEAD_DAYS} days&apos; (3 weeks&apos;) notice
+                  </strong>
+                  . Pick when the visit{" "}
                   <strong className="font-semibold text-ink">starts</strong> — arrivals from 9:00
                   am to 4:00 pm in 15-minute steps.
                 </p>
@@ -632,11 +637,15 @@ export default function Book() {
                   <Field label="Party Date" error={errors.partyDate} htmlFor="partyDate">
                     <MagicalDateField
                       id="partyDate"
-                      min={today}
+                      min={earliestDate}
                       value={form.partyDate}
                       onChange={(iso) => update("partyDate", iso)}
                       invalid={!!errors.partyDate}
                     />
+                    <p className="mt-1.5 text-xs text-inkSoft leading-snug">
+                      Earliest online booking date:{" "}
+                      {formatPartyDateLabel(earliestDate)} (3 weeks&apos; notice).
+                    </p>
                   </Field>
                   <Field label="Party Start Time" error={errors.partyTime} htmlFor="partyTime">
                     <MagicalListbox
@@ -806,7 +815,11 @@ export default function Book() {
 
             <h2 className="heading-display text-2xl sm:text-3xl pt-4">Party Details</h2>
             <p className="text-xs text-inkSoft -mt-1">
-              Parties can be booked any day of the week. Pick when the visit{" "}
+              Parties need at least{" "}
+              <strong className="font-semibold text-ink">
+                {MIN_BOOKING_LEAD_DAYS} days&apos; (3 weeks&apos;) notice
+              </strong>
+              . Pick when the visit{" "}
               <strong className="font-semibold text-ink">starts</strong>: we offer arrivals from 9:00
               am to 4:00 pm in 15-minute steps so we can fit bookings around each other. With your
               current package, the princess stays for{" "}
@@ -818,7 +831,7 @@ export default function Book() {
               <Field label="Party Date" error={errors.partyDate} htmlFor="partyDate">
                 <MagicalDateField
                   id="partyDate"
-                  min={today}
+                  min={earliestDate}
                   value={form.partyDate}
                   onChange={(iso) => update("partyDate", iso)}
                   invalid={!!errors.partyDate}
@@ -955,13 +968,14 @@ export default function Book() {
               <span className="text-sm text-inkSoft">
                 I agree to the{" "}
                 <Link to="/terms" className="text-pinkDeep underline">
-                  Terms & Conditions
+                  Terms & Booking Policy
                 </Link>{" "}
                 and{" "}
                 <Link to="/privacy" className="text-pinkDeep underline">
                   Privacy Policy
                 </Link>
-                . I understand the online deposit is non-refundable.
+                . I understand the online deposit is non-refundable, and that
+                bookings need at least 3 weeks&apos; notice.
               </span>
             </label>
             {errors.agreeTerms && (
