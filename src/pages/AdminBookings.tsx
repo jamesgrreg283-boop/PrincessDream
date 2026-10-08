@@ -11,7 +11,7 @@ const fetchOpts: RequestInit = { credentials: "include" };
 
 const PARTY_START_TIMES: { value: string; label: string }[] = (() => {
   const opts: { value: string; label: string }[] = [];
-  for (let m = 9 * 60; m <= 16 * 60; m += 15) {
+  for (let m = 9 * 60; m <= 18 * 60; m += 15) {
     const h24 = Math.floor(m / 60);
     const min = m % 60;
     const value = `${String(h24).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
@@ -22,13 +22,17 @@ const PARTY_START_TIMES: { value: string; label: string }[] = (() => {
   return opts;
 })();
 
-/** Matches server “full bookable day” block (9am–4pm grid). */
+/** Matches server “full bookable day” block (9am–6pm grid). */
 const BLOCK_WHOLE_DAY_START = "09:00";
-const BLOCK_WHOLE_DAY_END = "16:00";
+const BLOCK_WHOLE_DAY_END = "18:00";
+/** Whole-day blocks saved before hours were extended. */
+const LEGACY_BLOCK_WHOLE_DAY_END = "16:00";
 
 function blockIsWholeDay(bl: BlockRow): boolean {
   return (
-    bl.party_start_time === BLOCK_WHOLE_DAY_START && bl.party_end_time === BLOCK_WHOLE_DAY_END
+    bl.party_start_time === BLOCK_WHOLE_DAY_START &&
+    (bl.party_end_time === BLOCK_WHOLE_DAY_END ||
+      bl.party_end_time === LEGACY_BLOCK_WHOLE_DAY_END)
   );
 }
 
@@ -1264,7 +1268,7 @@ export default function AdminBookings() {
                 />
                 <span className="text-sm text-ink leading-snug">
                   <strong className="font-semibold">Block whole days</strong> — the same hours the
-                  booking form normally offers (9:00 am–4:00 pm) are closed on every day in the range.
+                  booking form normally offers (9:00 am–6:00 pm) are closed on every day in the range.
                 </span>
               </label>
 

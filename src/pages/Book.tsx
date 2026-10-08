@@ -45,10 +45,10 @@ import {
   MIN_BOOKING_LEAD_DAYS,
 } from "../data/bookingLeadTime";
 
-/** Party start times: every day, 9:00 am–4:00 pm inclusive, 15-minute steps. */
+/** Party start times: every day, 9:00 am–6:00 pm inclusive, 15-minute steps. */
 const PARTY_START_TIME_OPTIONS: { value: string; label: string }[] = (() => {
   const opts: { value: string; label: string }[] = [];
-  for (let m = 9 * 60; m <= 16 * 60; m += 15) {
+  for (let m = 9 * 60; m <= 18 * 60; m += 15) {
     const h24 = Math.floor(m / 60);
     const min = m % 60;
     const value = `${String(h24).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
@@ -379,7 +379,7 @@ export default function Book() {
     else if (isPartyDateTooSoon(form.partyDate)) e.partyDate = BOOKING_LEAD_TIME_MESSAGE;
     if (!form.partyTime) e.partyTime = "Please choose a start time";
     else if (!PARTY_TIME_VALUE_SET.has(form.partyTime))
-      e.partyTime = "Please choose a time between 9:00 am and 4:00 pm";
+      e.partyTime = "Please choose a time between 9:00 am and 6:00 pm";
     else if (occupiedTimes.includes(form.partyTime))
       e.partyTime = "That time is already booked — pick another slot";
     setErrors(e);
@@ -445,7 +445,7 @@ export default function Book() {
     else if (isPartyDateTooSoon(form.partyDate)) e.partyDate = BOOKING_LEAD_TIME_MESSAGE;
     if (!form.partyTime) e.partyTime = "Please choose a start time";
     else if (!PARTY_TIME_VALUE_SET.has(form.partyTime))
-      e.partyTime = "Please choose a time between 9:00 am and 4:00 pm";
+      e.partyTime = "Please choose a time between 9:00 am and 6:00 pm";
     else if (occupiedTimes.includes(form.partyTime))
       e.partyTime = "That time is already booked — pick another slot";
     if (!form.address.trim()) e.address = "Please enter the address";
@@ -620,7 +620,7 @@ export default function Book() {
                 <p className="text-sm text-inkSoft leading-relaxed">
                   Parties can be booked any day of the week. Pick when the visit{" "}
                   <strong className="font-semibold text-ink">starts</strong> — arrivals from 9:00
-                  am to 4:00 pm in 15-minute steps.
+                  am to 6:00 pm in 15-minute steps.
                 </p>
                 {slotCheckError && (
                   <div
@@ -818,7 +818,7 @@ export default function Book() {
               </strong>
               . Pick when the visit{" "}
               <strong className="font-semibold text-ink">starts</strong>: we offer arrivals from 9:00
-              am to 4:00 pm in 15-minute steps so we can fit bookings around each other. With your
+              am to 6:00 pm in 15-minute steps so we can fit bookings around each other. With your
               current package, the princess stays for{" "}
               <strong className="font-semibold text-ink">{selectedPackage.duration}</strong> from
               that start time.

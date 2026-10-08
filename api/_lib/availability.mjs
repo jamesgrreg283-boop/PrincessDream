@@ -2,10 +2,15 @@ import { durationMinutesForPackageSlug } from "./packages.mjs";
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** 9:00–16:00 inclusive, 15-minute steps (matches Book.tsx). */
+export const PARTY_DAY_START = "09:00";
+export const PARTY_DAY_END = "18:00";
+/** Whole-day blocks saved before hours were extended (9:00–16:00) still mean the whole day. */
+const LEGACY_WHOLE_DAY_END = "16:00";
+
+/** 9:00–18:00 inclusive, 15-minute steps (matches Book.tsx). */
 export const PARTY_GRID_TIMES = (() => {
   const out = [];
-  for (let m = 9 * 60; m <= 16 * 60; m += 15) {
+  for (let m = 9 * 60; m <= 18 * 60; m += 15) {
     const h24 = Math.floor(m / 60);
     const min = m % 60;
     out.push(`${String(h24).padStart(2, "0")}:${String(min).padStart(2, "0")}`);
@@ -87,12 +92,15 @@ export function blockedStartTimesForRowOnDate(row, calendarDate) {
   if (!blockRowCoversCalendarDate(row, calendarDate)) return [];
   if (!isValidPartyTime(row.party_start_time)) return [];
   const startM = partyTimeToMinutes(row.party_start_time);
-  const endT = row.party_end_time;
+  const endT =
+    row.party_start_time === PARTY_DAY_START && row.party_end_time === LEGACY_WHOLE_DAY_END
+      ? PARTY_DAY_END
+      : row.party_end_time;
   const multiDay =
     row.party_end_date != null && String(row.party_end_date) > String(row.party_date);
 
   if ((!endT || !isValidPartyTime(endT) || endT === row.party_start_time) && multiDay) {
-    const endM = partyTimeToMinutes("16:00");
+    const endM = partyTimeToMinutes(PARTY_DAY_END);
     const out = [];
     for (const t of PARTY_GRID_TIMES) {
       const m = partyTimeToMinutes(t);
