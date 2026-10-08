@@ -4,14 +4,11 @@ import PageHeader from "../components/PageHeader";
 import Sparkles from "../components/Sparkles";
 import PackageCard from "../components/PackageCard";
 import TrustBadges from "../components/TrustBadges";
-import { PACKAGES, depositFor, isAugustOfferActive, remainingFor, standardRemainingFor, totalFor } from "../data/packages";
+import { PACKAGES, depositFor, remainingFor } from "../data/packages";
 import { TRUST_BADGES } from "../data/site";
-import { AUGUST_OFFER } from "../data/augustOffer";
 import { MIN_BOOKING_LEAD_DAYS } from "../data/bookingLeadTime";
 
 export default function Packages() {
-  const offerOn = isAugustOfferActive();
-
   return (
     <>
       <SEO
@@ -56,15 +53,6 @@ export default function Packages() {
             <p className="text-center text-inkSoft mt-4">
               We make payment effortless: your online deposit secures your booking (with at least
               3 weeks&apos; notice), and the remainder is paid in cash on the day of the party.
-              {offerOn && (
-                <>
-                  {" "}
-                  <span className="text-pinkDeep font-medium">
-                    {AUGUST_OFFER.title}: 15% off is applied to your cash balance (deposit
-                    unchanged).
-                  </span>
-                </>
-              )}
             </p>
             <div className="overflow-x-auto mt-8">
               <table className="w-full text-left border-separate border-spacing-y-2">
@@ -80,31 +68,11 @@ export default function Packages() {
                   {PACKAGES.map((p) => (
                     <tr key={p.slug} className="bg-pinkSoft/30 rounded-xl">
                       <td className="px-4 py-3 rounded-l-xl font-medium">{p.name}</td>
-                      <td className="px-4 py-3">
-                        {offerOn ? (
-                          <span className="inline-flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
-                            <span className="line-through text-inkSoft/70 text-sm">£{p.price}</span>
-                            <span className="font-semibold text-pinkDeep">£{totalFor(p)}</span>
-                          </span>
-                        ) : (
-                          <>£{p.price}</>
-                        )}
-                      </td>
+                      <td className="px-4 py-3">£{p.price}</td>
                       <td className="px-4 py-3 text-pinkDeep font-semibold">
                         £{depositFor(p)}
                       </td>
-                      <td className="px-4 py-3 rounded-r-xl">
-                        {offerOn ? (
-                          <span className="inline-flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
-                            <span className="line-through text-inkSoft/70 text-sm">
-                              £{standardRemainingFor(p)}
-                            </span>
-                            <span className="font-semibold">£{remainingFor(p)}</span>
-                          </span>
-                        ) : (
-                          <>£{remainingFor(p)}</>
-                        )}
-                      </td>
+                      <td className="px-4 py-3 rounded-r-xl">£{remainingFor(p)}</td>
                     </tr>
                   ))}
                 </tbody>

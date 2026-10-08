@@ -2,11 +2,6 @@ import { packageBySlug } from "./packages.mjs";
 import { isValidPartyDate, isValidPartyTime } from "./availability.mjs";
 import { checkServicePostcode } from "./serviceArea.mjs";
 import {
-  augustPromoRemaining,
-  augustPromoTotal,
-  isAugustOfferActive,
-} from "./augustOffer.mjs";
-import {
   extraPrincessFee,
   extraPrincessRequired,
   parseChildCount,
@@ -25,7 +20,7 @@ const OCCASION_LABELS = {
 const ALLOWED_OCCASIONS = new Set(Object.keys(OCCASION_LABELS));
 
 /** Bookable character slugs — keep in sync with src/data/characters.ts */
-const ALLOWED_CHARACTERS = new Set([
+export const ALLOWED_CHARACTERS = new Set([
   "glass-slipper-princess",
   "belle",
   "rapunzel",
@@ -44,11 +39,6 @@ function occasionLine(booking) {
 
 export function buildNotes(booking) {
   const parts = [occasionLine(booking)];
-  if (isAugustOfferActive()) {
-    parts.push(
-      "August offer: 15% off package total applied to cash balance on the day (online deposit unchanged)."
-    );
-  }
   const n = String(booking.numChildren || "").trim();
   if (n) parts.push(`Number of children: ${n}`);
   const extra = String(booking.extraCharacter || "").trim();
@@ -135,10 +125,8 @@ export function bookingRowFromPayload(booking, pkg) {
   const extraCharacter = String(booking.extraCharacter || "").trim().toLowerCase();
   const extraFee = extraPrincessFee(extraCharacter);
   const deposit = Number(pkg.depositOnline) || 0;
-  const packageTotal = isAugustOfferActive() ? augustPromoTotal(pkg) : Number(pkg.price) || 0;
-  const packageRemaining = isAugustOfferActive()
-    ? augustPromoRemaining(pkg)
-    : Math.max(0, packageTotal - deposit);
+  const packageTotal = Number(pkg.price) || 0;
+  const packageRemaining = Math.max(0, packageTotal - deposit);
   const total = packageTotal + extraFee;
   const remaining = packageRemaining + extraFee;
   const kids = parseChildCount(booking.numChildren);

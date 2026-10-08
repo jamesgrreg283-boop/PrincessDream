@@ -13,9 +13,167 @@ import {
   validateBookingPayload,
 } from "./_lib/bookingValidate.mjs";
 import { insertBookingRow } from "./_lib/insertBooking.mjs";
-import { isSlotAvailable } from "./_lib/availability.mjs";
+import {
+  isSlotAvailable,
+  isValidPartyDate,
+  isValidPartyTime,
+} from "./_lib/availability.mjs";
+import { ALLOWED_CHARACTERS } from "./_lib/bookingValidate.mjs";
+import { checkServicePostcode } from "./_lib/serviceArea.mjs";
+import { extraPrincessFee, parseChildCount } from "./_lib/extraPrincess.mjs";
 
 const STATUSES = new Set(["pending", "confirmed", "cancelled"]);
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
+
+function ukStamp() {
+  return new Date().toLocaleString("en-GB", {
+    timeZone: "Europe/London",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * Admin edit of an existing booking (date, time, party and contact details).
+ * Uses existing columns only. Deposit is never changed; totals follow package / extra princess.
+ */
+async function amendBooking(res, supabase, id, d, force) {
+  const { data: current, error: getErr } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (getErr) {
+    console.error(getErr);
+    return res.status(500).json({ error: "Could not load booking" });
+  }
+  if (!current) {
+    return res.status(404).json({ error: "Booking not found" });
+  }
+
+  const str = (k, fallback) => (d[k] === undefined ? fallback : String(d[k] ?? "").trim());
+
+  const partyDate = str("partyDate", current.party_date);
+  const partyTime = str("partyTime", current.party_start_time);
+  const packageSlug = str("packageSlug", current.selected_package);
+  const character = str("character", current.selected_character).toLowerCase();
+  const extraCharacter = str("extraCharacter", current.extra_character ?? "").toLowerCase();
+  const parentName = str("parentName", current.parent_name);
+  const email = str("email", current.email);
+  const phone = str("phone", current.phone);
+  const childName = str("childName", current.child_name);
+  const childAge = str("childAge", current.child_age);
+  const address = str("address", current.address);
+  const postcodeRaw = str("postcode", current.postcode ?? "");
+  const numChildrenRaw =
+    d.numChildren === undefined ? current.num_children : d.numChildren;
+  const notes = d.notes === undefined ? current.notes : String(d.notes ?? "").trim() || null;
+
+  const errors = [];
+  if (!isValidPartyDate(partyDate)) errors.push("party date");
+  if (!isValidPartyTime(partyTime)) errors.push("start time");
+  const pkg = packageBySlug(packageSlug);
+  if (!pkg) errors.push("package");
+  if (!character || !ALLOWED_CHARACTERS.has(character)) errors.push("princess");
+  if (extraCharacter && !ALLOWED_CHARACTERS.has(extraCharacter)) errors.push("extra princess");
+  if (extraCharacter && extraCharacter === character) {
+    errors.push("extra princess (must differ from the main princess)");
+  }
+  if (!parentName) errors.push("parent name");
+  if (!EMAIL_RE.test(email)) errors.push("email");
+  if (phone.replace(/\D/g, "").length < 7) errors.push("phone (at least 7 digits)");
+  if (!childName) errors.push("child name");
+  if (!address) errors.push("address");
+  let postcode = current.postcode ?? null;
+  if (postcodeRaw) {
+    const pc = checkServicePostcode(postcodeRaw);
+    if (!pc.ok) errors.push("postcode (outside service area)");
+    else postcode = pc.normalised;
+  } else {
+    postcode = null;
+  }
+  if (errors.length) {
+    return res.status(400).json({ error: `Please check: ${errors.join(", ")}.` });
+  }
+
+  const slotChanged =
+    partyDate !== current.party_date ||
+    partyTime !== current.party_start_time ||
+    packageSlug !== current.selected_package;
+  if (slotChanged && current.status !== "cancelled" && !force) {
+    const free = await isSlotAvailable(supabase, partyDate, partyTime, packageSlug, id);
+    if (!free) {
+      return res.status(409).json({
+        error: "That date/time clashes with another booking or a blocked date.",
+        conflict: true,
+      });
+    }
+  }
+
+  const deposit = Number(current.deposit_amount) || 0;
+  const oldExtraFee = extraPrincessFee(current.extra_character);
+  const newExtraFee = extraPrincessFee(extraCharacter);
+  let total = Number(current.total_price) || 0;
+  let remaining = Number(current.remaining_balance) || 0;
+  if (packageSlug !== current.selected_package) {
+    total = pkg.price + newExtraFee;
+    remaining = Math.max(0, total - deposit);
+  } else if (oldExtraFee !== newExtraFee) {
+    total = total - oldExtraFee + newExtraFee;
+    remaining = Math.max(0, remaining - oldExtraFee + newExtraFee);
+  }
+
+  const changes = [];
+  if (partyDate !== current.party_date) changes.push(`date ${current.party_date} → ${partyDate}`);
+  if (partyTime !== current.party_start_time) {
+    changes.push(`time ${current.party_start_time} → ${partyTime}`);
+  }
+  if (packageSlug !== current.selected_package) {
+    changes.push(`package ${current.selected_package} → ${packageSlug}`);
+  }
+  if (character !== current.selected_character) {
+    changes.push(`princess ${current.selected_character} → ${character}`);
+  }
+  if (extraCharacter !== (current.extra_character ?? "")) {
+    changes.push(`extra princess ${current.extra_character || "none"} → ${extraCharacter || "none"}`);
+  }
+  const amendLine = changes.length ? `Amended by admin ${ukStamp()}: ${changes.join("; ")}` : "";
+  const finalNotes = [notes, amendLine].filter(Boolean).join("\n\n") || null;
+
+  const update = {
+    party_date: partyDate,
+    party_start_time: partyTime,
+    selected_package: packageSlug,
+    selected_character: character,
+    extra_character: extraCharacter || null,
+    num_children: parseChildCount(numChildrenRaw),
+    parent_name: parentName,
+    email,
+    phone,
+    child_name: childName,
+    child_age: childAge || "—",
+    address,
+    postcode,
+    total_price: total,
+    remaining_balance: remaining,
+    notes: finalNotes,
+  };
+
+  const { data: updated, error: upErr } = await supabase
+    .from("bookings")
+    .update(update)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  if (upErr) {
+    console.error(upErr);
+    return res.status(500).json({ error: "Could not update booking" });
+  }
+  return res.status(200).json({ booking: updated });
+}
 
 function parseBody(req) {
   const b = req.body;
@@ -140,6 +298,9 @@ export default async function handler(req, res) {
 
     if (!id) {
       return res.status(400).json({ error: "Missing id" });
+    }
+    if (body?.details && typeof body.details === "object") {
+      return amendBooking(res, supabase, id, body.details, Boolean(body.force));
     }
     if (!STATUSES.has(status)) {
       return res.status(400).json({ error: "Invalid status" });

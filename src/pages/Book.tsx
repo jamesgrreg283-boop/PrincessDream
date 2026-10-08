@@ -8,8 +8,7 @@ import AvailabilityCheckingOverlay, {
   AVAILABILITY_CHECK_MIN_MS,
   formatPartyDateLabel,
 } from "../components/AvailabilityCheckingOverlay";
-import { PACKAGES, depositFor, discountFor, isAugustOfferActive, remainingFor, standardRemainingFor, totalFor } from "../data/packages";
-import { AUGUST_OFFER } from "../data/augustOffer";
+import { PACKAGES, depositFor, remainingFor, totalFor } from "../data/packages";
 import { CHARACTERS, characterLabelForSlug } from "../data/characters";
 import {
   EXTRA_PRINCESS_FEE_GBP,
@@ -91,9 +90,7 @@ const CHARACTER_LIST_OPTIONS = [
 
 const PACKAGE_LIST_OPTIONS = PACKAGES.map((p) => ({
   value: p.slug,
-  label: isAugustOfferActive()
-    ? `${p.name} — £${totalFor(p)} (was £${p.price})`
-    : `${p.name} — £${p.price}`,
+  label: `${p.name} — £${p.price}`,
 }));
 
 type BookingFlowStep = "pick-slot" | "checking" | "form";
@@ -339,16 +336,10 @@ export default function Book() {
   const hasExtra = extraFee > 0;
   const extraNeeded = extraPrincessRequired(form.numChildren);
   const extraPrincessName = hasExtra ? characterLabelForSlug(form.extraCharacter) : "";
-  const packageListTotal = selectedPackage.price;
-  const packagePromoTotal = totalFor(selectedPackage);
-  const packageListBalance = standardRemainingFor(selectedPackage);
-  const packagePromoBalance = remainingFor(selectedPackage);
+  const packageTotal = totalFor(selectedPackage);
   const deposit = depositFor(selectedPackage);
-  const balance = packagePromoBalance + extraFee;
-  const listBalance = packageListBalance + extraFee;
-  const grandTotal = packagePromoTotal + extraFee;
-  const offerOn = isAugustOfferActive();
-  const saved = discountFor(selectedPackage);
+  const balance = remainingFor(selectedPackage) + extraFee;
+  const grandTotal = packageTotal + extraFee;
 
   const extraPrincessOptions = useMemo(() => {
     const taken = form.character.trim().toLowerCase();
@@ -1059,29 +1050,7 @@ export default function Book() {
               </ul>
 
               <div className="mt-6 pt-6 border-t border-pinkSoft space-y-2">
-                {offerOn && (
-                  <div className="mb-3 rounded-xl bg-pinkPale/60 border border-pinkSoft px-3 py-2.5 text-xs text-ink leading-snug">
-                    <span className="font-semibold text-pinkDeep">{AUGUST_OFFER.title}</span>
-                    {" — "}
-                    15% off the package, applied to your cash balance. Deposit stays the same.
-                    Extra princess is a flat £{EXTRA_PRINCESS_FEE_GBP} on the day.
-                  </div>
-                )}
-                <Row
-                  label="Package"
-                  value={
-                    offerOn ? (
-                      <span className="inline-flex items-baseline gap-2">
-                        <span className="line-through text-inkSoft/70 font-normal text-sm">
-                          £{packageListTotal}
-                        </span>
-                        <span>£{packagePromoTotal}</span>
-                      </span>
-                    ) : (
-                      `£${packageListTotal}`
-                    )
-                  }
-                />
+                <Row label="Package" value={`£${packageTotal}`} />
                 {hasExtra && (
                   <Row
                     label={`Extra princess${extraPrincessName ? ` (${extraPrincessName})` : ""}`}
@@ -1089,34 +1058,13 @@ export default function Book() {
                   />
                 )}
                 <Row label="Deposit (online)" value={`£${deposit}`} highlight />
-                <Row
-                  label="Balance on day (cash)"
-                  value={
-                    offerOn ? (
-                      <span className="inline-flex items-baseline gap-2">
-                        <span className="line-through text-inkSoft/70 font-normal text-sm">
-                          £{listBalance}
-                        </span>
-                        <span className="text-pinkDeep">£{balance}</span>
-                      </span>
-                    ) : (
-                      `£${balance}`
-                    )
-                  }
-                />
+                <Row label="Balance on day (cash)" value={`£${balance}`} />
                 <Row label="Grand total" value={`£${grandTotal}`} />
-                {offerOn && (
-                  <p className="text-[11px] text-pinkDeep font-medium pt-1">
-                    You save £{saved} on the package (extra princess is not discounted)
-                  </p>
-                )}
               </div>
 
               <p className="mt-5 text-xs text-inkSoft">
                 Your deposit secures the date and chosen princess. The remaining
                 balance is paid in cash on the day.
-                {offerOn &&
-                  " During our August offer, the discount comes off this cash balance — not your deposit."}
               </p>
             </div>
             )}

@@ -1,10 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { packageBySlug } from "./packages.mjs";
-import {
-  augustPromoRemaining,
-  augustPromoTotal,
-  isAugustOfferActive,
-} from "./augustOffer.mjs";
 
 /**
  * In-memory row only — not inserted into Supabase. Matches booking shape used by email templates.
@@ -21,10 +16,8 @@ export function buildSyntheticTestBooking(opts) {
   const party_date = party.toISOString().slice(0, 10);
 
   const deposit = pkg.depositOnline;
-  const total = isAugustOfferActive() ? augustPromoTotal(pkg) : pkg.price;
-  const remaining = isAugustOfferActive()
-    ? augustPromoRemaining(pkg)
-    : pkg.price - pkg.depositOnline;
+  const total = pkg.price;
+  const remaining = pkg.price - pkg.depositOnline;
 
   return {
     id: randomUUID(),

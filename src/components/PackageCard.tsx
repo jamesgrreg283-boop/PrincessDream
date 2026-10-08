@@ -1,14 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  depositFor,
-  discountFor,
-  isAugustOfferActive,
-  remainingFor,
-  standardRemainingFor,
-  totalFor,
-  type Package,
-} from "../data/packages";
+import { depositFor, type Package } from "../data/packages";
 import { CrownIcon } from "./CrownIcon";
 
 export default function PackageCard({
@@ -18,13 +10,6 @@ export default function PackageCard({
   pkg: Package;
   index?: number;
 }) {
-  const offerOn = isAugustOfferActive();
-  const listTotal = pkg.price;
-  const promoTotal = totalFor(pkg);
-  const listBalance = standardRemainingFor(pkg);
-  const promoBalance = remainingFor(pkg);
-  const saved = discountFor(pkg);
-
   return (
     <motion.article
       initial={{ opacity: 0, y: 30 }}
@@ -47,12 +32,6 @@ export default function PackageCard({
         </div>
       )}
 
-      {offerOn && (
-        <div className="absolute top-4 right-4 px-2.5 py-1 rounded-full text-[10px] font-cinzel uppercase tracking-wider bg-pinkDeep text-white">
-          15% off
-        </div>
-      )}
-
       <div className="flex items-center justify-between">
         <CrownIcon className="w-10 h-10" />
         <div className="text-right">
@@ -66,34 +45,13 @@ export default function PackageCard({
       <p className="text-inkSoft mt-2 text-sm">{pkg.tagline}</p>
 
       <div className="mt-6">
-        {offerOn ? (
-          <>
-            <div className="flex items-baseline gap-2.5 flex-wrap">
-              <span className="text-2xl font-display text-inkSoft/70 line-through decoration-pinkDeep/50">
-                £{listTotal}
-              </span>
-              <span className="text-5xl font-display font-bold accent-text">£{promoTotal}</span>
-            </div>
-            <p className="text-xs text-pinkDeep font-medium mt-1">
-              August offer — save £{saved} on your cash balance
-            </p>
-          </>
-        ) : (
-          <div className="flex items-baseline gap-2">
-            <span className="text-5xl font-display font-bold accent-text">£{listTotal}</span>
-          </div>
-        )}
+        <div className="flex items-baseline gap-2">
+          <span className="text-5xl font-display font-bold accent-text">£{pkg.price}</span>
+        </div>
       </div>
       <div className="text-xs text-inkSoft mt-1">
         Online deposit secures your booking · £{depositFor(pkg)} today
       </div>
-      {offerOn && (
-        <p className="text-xs text-inkSoft mt-1">
-          Balance on the day:{" "}
-          <span className="line-through text-inkSoft/70">£{listBalance}</span>{" "}
-          <span className="font-semibold text-ink">£{promoBalance}</span>
-        </p>
-      )}
 
       <ul className="mt-6 space-y-2.5">
         {pkg.includes.map((item) => (

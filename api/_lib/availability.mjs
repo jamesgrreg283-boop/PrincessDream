@@ -30,11 +30,14 @@ export function partyTimeToMinutes(t) {
   return h * 60 + m;
 }
 
+/** Minimum turnaround between parties (get ready + travel). Env can raise it, never lower it. */
+export const MIN_TRAVEL_BUFFER_MINUTES = 90;
+
 /** Travel / turnaround gap (minutes) after one party ends before another can start (same day). */
 export function travelBufferMinutes() {
-  const n = Number(process.env.BOOKING_TRAVEL_BUFFER_MINUTES ?? 60);
-  if (!Number.isFinite(n)) return 60;
-  return Math.max(0, Math.min(180, Math.round(n)));
+  const n = Number(process.env.BOOKING_TRAVEL_BUFFER_MINUTES ?? MIN_TRAVEL_BUFFER_MINUTES);
+  if (!Number.isFinite(n)) return MIN_TRAVEL_BUFFER_MINUTES;
+  return Math.max(MIN_TRAVEL_BUFFER_MINUTES, Math.min(180, Math.round(n)));
 }
 
 /** Rows blocking the slot: confirmed, or pending with active hold. */
@@ -58,14 +61,15 @@ export function partyIntervalsConflict(startA, durA, startB, durB, buf) {
   );
 }
 
-export async function fetchBookingsForDate(supabase, partyDate) {
+export async function fetchBookingsForDate(supabase, partyDate, excludeBookingId = null) {
   const { data, error } = await supabase
     .from("bookings")
-    .select("party_start_time, status, hold_expires_at, selected_package")
+    .select("id, party_start_time, status, hold_expires_at, selected_package")
     .eq("party_date", partyDate);
 
   if (error) throw error;
-  return data ?? [];
+  const rows = data ?? [];
+  return excludeBookingId ? rows.filter((r) => r.id !== excludeBookingId) : rows;
 }
 
 /** True if this block row covers `calendarDate` (YYYY-MM-DD). */
@@ -154,6 +158,13 @@ export function candidateConflictsBookings(
   const s0 = partyTimeToMinutes(candidateTime);
   const d0 = durationMinutesForPackageSlug(candidatePackageSlug);
 
+  // A party may not run into an admin-blocked period (each blocked start covers its 15-min step).
+  for (const t of blocked) {
+    if (!isValidPartyTime(t)) continue;
+    const m = partyTimeToMinutes(t);
+    if (m >= s0 && m < s0 + d0) return true;
+  }
+
   for (const row of rows) {
     const s1 = partyTimeToMinutes(row.party_start_time);
     const d1 = durationMinutesForPackageSlug(row.selected_package);
@@ -186,14 +197,16 @@ export async function getOccupiedTimesForDate(
   return occupied;
 }
 
+/** @param {string|null} [excludeBookingId] ignore this booking (when moving it to a new slot). */
 export async function isSlotAvailable(
   supabase,
   partyDate,
   partyStartTime,
-  packageSlug = "2-hour-party"
+  packageSlug = "2-hour-party",
+  excludeBookingId = null
 ) {
   const [rows, blockedTimes] = await Promise.all([
-    fetchBookingsForDate(supabase, partyDate),
+    fetchBookingsForDate(supabase, partyDate, excludeBookingId),
     fetchBlockedTimesForDate(supabase, partyDate),
   ]);
   return !candidateConflictsBookings(

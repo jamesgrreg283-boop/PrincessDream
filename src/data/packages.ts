@@ -3,13 +3,6 @@
 // `depositOnline` = amount paid online to secure the booking (whole pounds).
 // ============================================================================
 
-import {
-  augustDiscountAmount,
-  augustPromoRemaining,
-  augustPromoTotal,
-  isAugustOfferActive,
-} from "./augustOffer";
-
 export type Package = {
   slug: string;
   name: string;
@@ -77,24 +70,9 @@ export const PACKAGES: Package[] = [
   },
 ];
 
-/** Online deposit — never changed by promotional offers. */
 export const depositFor = (pkg: Package) => pkg.depositOnline;
 
-/** Standard (non-promo) cash balance. */
-export const standardRemainingFor = (pkg: Package) => pkg.price - pkg.depositOnline;
+/** Cash balance due on the day. */
+export const remainingFor = (pkg: Package) => pkg.price - pkg.depositOnline;
 
-/**
- * Cash balance due on the day.
- * During the August offer this is reduced by 15% of the package total (deposit unchanged).
- */
-export const remainingFor = (pkg: Package) =>
-  isAugustOfferActive() ? augustPromoRemaining(pkg) : standardRemainingFor(pkg);
-
-/** Effective package total after any active promo (deposit still taken at full depositOnline). */
-export const totalFor = (pkg: Package) =>
-  isAugustOfferActive() ? augustPromoTotal(pkg) : pkg.price;
-
-export const discountFor = (pkg: Package) =>
-  isAugustOfferActive() ? augustDiscountAmount(pkg) : 0;
-
-export { isAugustOfferActive };
+export const totalFor = (pkg: Package) => pkg.price;

@@ -28,6 +28,7 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "Origin not allowed" });
   }
   applyCors(res, requestOrigin);
+  res.setHeader("Cache-Control", "no-store");
 
   let supabase;
   try {

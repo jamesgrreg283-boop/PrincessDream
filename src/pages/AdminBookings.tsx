@@ -118,6 +118,27 @@ const emptyManual: ManualForm = {
   adminNotes: "",
 };
 
+type EditForm = Omit<ManualForm, "specialRequests" | "adminNotes"> & { notes: string };
+
+function editFormFromBooking(b: BookingRow): EditForm {
+  return {
+    parentName: b.parent_name ?? "",
+    email: b.email ?? "",
+    phone: b.phone ?? "",
+    childName: b.child_name ?? "",
+    childAge: b.child_age === "—" ? "" : (b.child_age ?? ""),
+    partyDate: b.party_date ?? "",
+    partyTime: b.party_start_time ?? "",
+    address: b.address ?? "",
+    postcode: b.postcode ?? "",
+    character: b.selected_character ?? "",
+    extraCharacter: b.extra_character ?? "",
+    packageSlug: b.selected_package ?? "",
+    numChildren: b.num_children != null ? String(b.num_children) : "",
+    notes: b.notes ?? "",
+  };
+}
+
 function paymentLabel(b: BookingRow): string {
   if (b.status === "cancelled") return "—";
   if (b.status === "confirmed") {
@@ -188,6 +209,10 @@ export default function AdminBookings() {
     "upcoming"
   );
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [editMsg, setEditMsg] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
 
   const [testPkg, setTestPkg] = useState("30-minute-appearance");
   const [testEmail, setTestEmail] = useState("");
@@ -355,6 +380,55 @@ export default function AdminBookings() {
       void loadAll();
     } catch {
       window.alert("Network error");
+    }
+  };
+
+  const startEdit = (b: BookingRow) => {
+    setEditingId(b.id);
+    setEditForm(editFormFromBooking(b));
+    setEditMsg(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm(null);
+    setEditMsg(null);
+  };
+
+  const saveEdit = async (ev: React.FormEvent, force = false) => {
+    ev.preventDefault();
+    if (!editingId || !editForm) return;
+    setEditMsg(null);
+    setEditSaving(true);
+    try {
+      const r = await fetch(`${origin()}/api/bookings`, {
+        method: "PATCH",
+        ...fetchOpts,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingId, details: editForm, force }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { error?: string; conflict?: boolean };
+      if (r.status === 409 && j.conflict && !force) {
+        if (
+          window.confirm(
+            `${j.error ?? "That slot clashes with another booking."}\n\nSave the change anyway?`
+          )
+        ) {
+          setEditSaving(false);
+          await saveEdit(ev, true);
+        }
+        return;
+      }
+      if (!r.ok) {
+        setEditMsg(j.error || `Could not save (${r.status})`);
+        return;
+      }
+      cancelEdit();
+      void loadAll();
+    } catch {
+      setEditMsg("Network error.");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -835,6 +909,13 @@ export default function AdminBookings() {
                           <button
                             type="button"
                             className="block text-xs text-pinkDeep underline"
+                            onClick={() => (editingId === b.id ? cancelEdit() : startEdit(b))}
+                          >
+                            {editingId === b.id ? "Close edit" : "Edit details"}
+                          </button>
+                          <button
+                            type="button"
+                            className="block text-xs text-pinkDeep underline"
                             onClick={() => void saveStatus(b.id)}
                           >
                             Save status
@@ -922,6 +1003,224 @@ export default function AdminBookings() {
                                 </p>
                               )}
                             </div>
+                          </td>
+                        </tr>
+                      )}
+                      {editingId === b.id && editForm && (
+                        <tr className="bg-white border-b border-pinkSoft/60">
+                          <td colSpan={9} className="py-4 px-3">
+                            <form
+                              onSubmit={(ev) => void saveEdit(ev)}
+                              className="space-y-4 max-w-4xl"
+                              noValidate
+                            >
+                              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                <h3 className="font-display text-lg">Edit booking details</h3>
+                                <p className="text-xs text-inkSoft">
+                                  Deposit stays at {gbp(b.deposit_amount)}. Changing the package or
+                                  extra princess recalculates the balance due on the day.
+                                </p>
+                              </div>
+                              {editMsg && (
+                                <p className="text-sm text-pinkDeep" role="status">
+                                  {editMsg}
+                                </p>
+                              )}
+                              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <EditField label="Party date">
+                                  <input
+                                    type="date"
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.partyDate}
+                                    onChange={(e) =>
+                                      setEditForm((f) => f && { ...f, partyDate: e.target.value })
+                                    }
+                                  />
+                                </EditField>
+                                <EditField label="Start time">
+                                  <select
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.partyTime}
+                                    onChange={(e) =>
+                                      setEditForm((f) => f && { ...f, partyTime: e.target.value })
+                                    }
+                                  >
+                                    {!PARTY_START_TIMES.some((t) => t.value === editForm.partyTime) && (
+                                      <option value={editForm.partyTime}>{editForm.partyTime}</option>
+                                    )}
+                                    {PARTY_START_TIMES.map((t) => (
+                                      <option key={t.value} value={t.value}>
+                                        {t.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </EditField>
+                                <EditField label="Package">
+                                  <select
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.packageSlug}
+                                    onChange={(e) =>
+                                      setEditForm((f) => f && { ...f, packageSlug: e.target.value })
+                                    }
+                                  >
+                                    {PACKAGES.map((p) => (
+                                      <option key={p.slug} value={p.slug}>
+                                        {p.name} — £{p.price}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </EditField>
+                                <EditField label="Princess">
+                                  <select
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.character}
+                                    onChange={(e) =>
+                                      setEditForm((f) => {
+                                        if (!f) return f;
+                                        const character = e.target.value;
+                                        const extraCharacter =
+                                          f.extraCharacter === character ? "" : f.extraCharacter;
+                                        return { ...f, character, extraCharacter };
+                                      })
+                                    }
+                                  >
+                                    {characterOptions.map((c) => (
+                                      <option key={c.value} value={c.value}>
+                                        {c.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </EditField>
+                                <EditField label="Extra princess">
+                                  <select
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.extraCharacter}
+                                    onChange={(e) =>
+                                      setEditForm((f) => f && { ...f, extraCharacter: e.target.value })
+                                    }
+                                  >
+                                    <option value="">None</option>
+                                    {characterOptions
+                                      .filter((c) => c.value !== editForm.character)
+                                      .map((c) => (
+                                        <option key={`edit-extra-${c.value}`} value={c.value}>
+                                          {c.label}
+                                        </option>
+                                      ))}
+                                  </select>
+                                </EditField>
+                                <EditField label="# children">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.numChildren}
+                                    onChange={(e) =>
+                                      setEditForm((f) => f && { ...f, numChildren: e.target.value })
+                                    }
+                                  />
+                                </EditField>
+                                <EditField label="Parent name">
+                                  <input
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.parentName}
+                                    onChange={(e) =>
+                                      setEditForm((f) => f && { ...f, parentName: e.target.value })
+                                    }
+                                  />
+                                </EditField>
+                                <EditField label="Email">
+                                  <input
+                                    type="email"
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.email}
+                                    onChange={(e) =>
+                                      setEditForm((f) => f && { ...f, email: e.target.value })
+                                    }
+                                  />
+                                </EditField>
+                                <EditField label="Phone">
+                                  <input
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.phone}
+                                    onChange={(e) =>
+                                      setEditForm((f) => f && { ...f, phone: e.target.value })
+                                    }
+                                  />
+                                </EditField>
+                                <EditField label="Child name">
+                                  <input
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.childName}
+                                    onChange={(e) =>
+                                      setEditForm((f) => f && { ...f, childName: e.target.value })
+                                    }
+                                  />
+                                </EditField>
+                                <EditField label="Child age">
+                                  <input
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.childAge}
+                                    onChange={(e) =>
+                                      setEditForm((f) => f && { ...f, childAge: e.target.value })
+                                    }
+                                  />
+                                </EditField>
+                                <EditField label="Postcode">
+                                  <input
+                                    className="input-magical py-2 text-sm"
+                                    value={editForm.postcode}
+                                    onChange={(e) =>
+                                      setEditForm((f) => f && { ...f, postcode: e.target.value })
+                                    }
+                                  />
+                                </EditField>
+                                <div className="sm:col-span-2 lg:col-span-3">
+                                  <EditField label="Address">
+                                    <input
+                                      className="input-magical py-2 text-sm"
+                                      value={editForm.address}
+                                      onChange={(e) =>
+                                        setEditForm((f) => f && { ...f, address: e.target.value })
+                                      }
+                                    />
+                                  </EditField>
+                                </div>
+                                <div className="sm:col-span-2 lg:col-span-3">
+                                  <EditField label="Notes">
+                                    <textarea
+                                      rows={4}
+                                      className="input-magical py-2 text-sm"
+                                      value={editForm.notes}
+                                      onChange={(e) =>
+                                        setEditForm((f) => f && { ...f, notes: e.target.value })
+                                      }
+                                    />
+                                  </EditField>
+                                </div>
+                              </div>
+                              <p className="text-xs text-inkSoft">
+                                A note recording what changed (e.g. old date → new date) is added
+                                automatically. Use &ldquo;Resend emails&rdquo; afterwards if the
+                                customer should get updated confirmation details.
+                              </p>
+                              <div className="flex flex-wrap gap-3">
+                                <button
+                                  type="submit"
+                                  disabled={editSaving}
+                                  className="btn-primary text-sm py-2.5 px-6 disabled:opacity-60"
+                                >
+                                  {editSaving ? "Saving…" : "Save changes"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelEdit}
+                                  className="btn-secondary text-sm py-2.5 px-6"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </form>
                           </td>
                         </tr>
                       )}
@@ -1283,5 +1582,14 @@ export default function AdminBookings() {
         </div>
       </section>
     </>
+  );
+}
+
+function EditField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="block text-xs font-medium text-inkSoft mb-1">{label}</span>
+      {children}
+    </label>
   );
 }

@@ -13,7 +13,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "How much is the deposit?",
-    a: "A fixed online deposit secures your booking: £40 for the 30-minute appearance, and £50 for the 1-hour or 2-hour parties. During our August booking offer (book by 31 August), you get 15% off any package — the discount comes off the cash balance on the day, not the deposit.",
+    a: "A fixed online deposit secures your booking: £40 for the 30-minute appearance, and £50 for the 1-hour or 2-hour parties. The rest is paid in cash on the day.",
   },
   {
     q: "When is the remaining balance due?",
